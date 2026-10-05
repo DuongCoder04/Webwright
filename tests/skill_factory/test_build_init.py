@@ -297,7 +297,7 @@ def test_the_readme_spec_shows_every_key_init_writes():
     knob they never learn they have — they'd think it was CLI-only. This drifted twice, silently:
     once when --draws was added, once when --verify-rounds was. Nothing pinned the docs to the
     code, so pin them."""
-    readme = Path(__file__).resolve().parents[2] / "src" / "cuawright" / "webwright" / "skill_factory" / "README.md"
+    readme = Path(__file__).resolve().parents[2] / "extensions" / "skill-factory" / "src" / "cuawright" / "webwright" / "skill_factory" / "README.md"
     text = readme.read_text(encoding="utf-8")
     start = text.index("build:", text.index("# skill.yaml"))
     shown = set(yaml.safe_load(text[start:text.index("```", start)])["build"])

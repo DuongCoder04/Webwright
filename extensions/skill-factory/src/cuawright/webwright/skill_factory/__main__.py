@@ -20,7 +20,7 @@ def main() -> int:
           "  learn   distill a folder of finished runs into skills (no manifest needed)\n"
           "  update  manual mode: distill from an explicit batch.json manifest\n"
           "  route   route a task: run a matching skill directly, or hand it to the agent")
-    return 1
+    return 0 if len(sys.argv) == 2 and sys.argv[1] in {"-h", "--help"} else 1
 
 if __name__ == "__main__":
     raise SystemExit(main())

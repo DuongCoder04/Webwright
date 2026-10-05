@@ -1053,6 +1053,10 @@ def test_installed_wheel_origin_and_contents_when_available():
             for path in (ROOT / "src").rglob("*.py")
         }
         assert set(python_files) == expected
+        assert not any(
+            "skill_factory/" in name or name.endswith("skill_use.py")
+            for name in python_files
+        )
         assert all(
             name.startswith(("cuawright/", "webwright/")) or ".dist-info/" in name
             for name in wheel.namelist()
@@ -1078,6 +1082,9 @@ def test_root_metadata_includes_web_and_desktop():
     }
     assert project["optional-dependencies"]["desktop"] == [
         "openai>=2.0,<3; python_version >= '3.12'"
+    ]
+    assert project["optional-dependencies"]["skill-factory"] == [
+        "cuawright-skill-factory==0.2.0"
     ]
     assert metadata["tool"]["pytest"]["ini_options"]["testpaths"] == [
         "tests",

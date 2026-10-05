@@ -1,6 +1,6 @@
 # Reference — verification, parameters, components
 
-[← back to the module README](../../src/cuawright/webwright/skill_factory/README.md)
+[← back to the module README](../../extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md)
 
 ## Verification and grades
 
@@ -54,9 +54,9 @@ Why code even at `reference` grade, versus a natural-language note: the selector
 shapes are verbatim-copyable into the agent's next script, individual primitives often still run
 when the whole skill doesn't, and a reference skill is one repair away from executable. And a
 prior alone pulls its weight: the WebArena numbers in
-[Results](../../src/cuawright/webwright/skill_factory/README.md#-results) come from a library the agent read
+[Results](../../extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md#-results) come from a library the agent read
 exactly this way. The flights skill in the
-[Quick Start](../../src/cuawright/webwright/skill_factory/README.md#-quick-start), by contrast, reruns an
+[Quick Start](../../extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md#-quick-start), by contrast, reruns an
 unseen route standalone, which is what `executable` buys.
 
 ## All parameters
@@ -174,7 +174,7 @@ else already reads `OPENAI_*`; if you don't care, set only `OPENAI_*`.
 
 Set neither of those and you get that class's own fallbacks, `gpt-4o` at `https://api.openai.com/v1/responses`,
 and a line on stderr saying so. Those are inherited defaults, not suggestions: the
-[Results](../../src/cuawright/webwright/skill_factory/README.md#-results) ran on a much newer model, and
+[Results](../../extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md#-results) ran on a much newer model, and
 every skill in your library is written by whichever one you leave it on. Name it.
 
 **The agent's model reads none of these vars**; nothing outside `llm.py` does. On a custom

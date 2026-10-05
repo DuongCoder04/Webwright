@@ -7,6 +7,18 @@ Every task Webwright solves leaves a working script behind. The Skill Factory tu
 scripts into a growing library of **reusable, verified, parameterized skills**: code you can
 run without a model and compose into the next task instead of re-exploring the site.
 
+Skill Factory is an **optional companion package**. It is excluded from the base
+CUAWright wheel and does not participate in normal browser or desktop runs.
+From the CUAWright repository root, install it with:
+
+```bash
+pip install -e ".[skill-factory]" -e extensions/skill-factory
+cuawright-skill-factory --help
+```
+
+The existing `python -m cuawright.webwright.skill_factory` and legacy
+`webwright.skill_factory` entrypoints remain available when the extension is installed.
+
 ## 🎥 Demo
 
 
@@ -26,7 +38,7 @@ https://github.com/user-attachments/assets/a6cb7d8e-2411-4d14-b85e-4255ccb1ae81
 
 ## 🗺️ How it works
 
-![components, the loop, and what a skill is](../../../assets/skill_factory_pipeline.png)
+![components, the loop, and what a skill is](../../../../../../assets/skill_factory_pipeline.png)
 
 The system adds two integration points to WebWright without changing the agent loop:
 
@@ -65,7 +77,7 @@ git clone https://github.com/microsoft/Webwright.git
 cd Webwright
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e .
+pip install -e ".[skill-factory]" -e extensions/skill-factory
 playwright install chromium
 ```
 
@@ -102,7 +114,7 @@ live Google Flights.
 A learned skill is a plain CLI. Run it directly — no model, no API key, about 40 seconds:
 
 ```bash
-python src/cuawright/webwright/skill_factory/examples/learned_library/what_is_the_earliest_nonstop_flight_from_2c8dab1/skill.py \
+python extensions/skill-factory/src/cuawright/webwright/skill_factory/examples/learned_library/what_is_the_earliest_nonstop_flight_from_2c8dab1/skill.py \
     --origin-city Seattle --origin-code SEA --destination-city Denver --destination-code DEN --date 2026-08-26
 ```
 
@@ -204,7 +216,7 @@ python -m cuawright.webwright.skill_factory learn outputs/ --library ./library
 The repository also includes three example trajectories:
 
 ```bash
-cd src/cuawright/webwright/skill_factory/examples
+cd extensions/skill-factory/src/cuawright/webwright/skill_factory/examples
 python -m cuawright.webwright.skill_factory learn trajectories --library ./library --verify off
 ```
 
@@ -296,8 +308,8 @@ Here are some known rough edges, and directions we might take them.
 
 | doc | what's in it |
 |---|---|
-| [docs/skill_factory/manual.md](../../../docs/skill_factory/manual.md) | manual mode: you declare the template, params, and admission yourself. Use it for benchmarks (pipe your evaluator's verdict in as the gate), logged-in sites, or cases where an LLM shouldn't be guessing your template |
-| [docs/skill_factory/reference.md](../../../docs/skill_factory/reference.md) | verification & grades, every flag and env var, component map, backend |
+| [docs/skill_factory/manual.md](../../../../../../docs/skill_factory/manual.md) | manual mode: you declare the template, params, and admission yourself. Use it for benchmarks (pipe your evaluator's verdict in as the gate), logged-in sites, or cases where an LLM shouldn't be guessing your template |
+| [docs/skill_factory/reference.md](../../../../../../docs/skill_factory/reference.md) | verification & grades, every flag and env var, component map, backend |
 | [examples/README.md](examples/README.md) | the checked-in skill and the example inputs |
 
 ## 📝 Citation

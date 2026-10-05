@@ -55,7 +55,7 @@ Evaluator payloads, hidden task state, and credentials are excluded from diagnos
 
 ```bash
 pip install -e ".[desktop,test,build]"
-pytest -q
+pytest -q tests/unit release/osworld/tests
 python -m build --wheel
 ```
 

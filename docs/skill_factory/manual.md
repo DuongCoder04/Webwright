@@ -1,6 +1,6 @@
 # Manual mode — manifests, gold gates, full control
 
-[← back to the module README](../../src/cuawright/webwright/skill_factory/README.md)
+[← back to the module README](../../extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md)
 
 ## When to use this mode
 

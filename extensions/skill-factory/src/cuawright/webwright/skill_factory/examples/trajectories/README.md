@@ -6,7 +6,7 @@ minutes solving before you had anything to distil. These are three real solves o
 template, so you don't have to:
 
 ```bash
-cd src/cuawright/webwright/skill_factory/examples
+cd extensions/skill-factory/src/cuawright/webwright/skill_factory/examples
 python -m cuawright.webwright.skill_factory learn trajectories --library ./library --verify off
 ```
 

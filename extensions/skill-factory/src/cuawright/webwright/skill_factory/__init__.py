@@ -2,7 +2,7 @@
 
 Store solved tasks as reusable, executable code skills; retrieve + judge (use/adapt/skip) at
 solve time; admit via a gate; and grow the library incrementally (evolve). Plugs into webwright
-as a built-in submodule:
+as an optional extension:
   - solve-time reuse  : the `skill_use` tool (agent invokes it like self_reflection / image_qa)
   - offline growth    : `update.evolve` (run after solves to distill gate-passed solves into skills)
 
