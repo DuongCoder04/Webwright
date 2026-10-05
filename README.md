@@ -154,25 +154,45 @@ State-of-the-art on two real-website benchmarks with a 100-step budget — see t
 
 ## 🗺️ Project Map
 
+```text
+CUAWright/
+├── pyproject.toml                      # package, dependency extras, CLI commands
+├── setup.py                            # desktop provenance in wheels and source archives
+├── src/
+│   ├── cuawright/
+│   │   ├── webwright/                  # browser runtime
+│   │   │   ├── agents/                 # browser agent loop
+│   │   │   ├── environments/           # browser and terminal workspaces
+│   │   │   ├── models/                 # OpenAI, Anthropic, OpenRouter backends
+│   │   │   ├── tools/                  # browser sessions, images, self-reflection
+│   │   │   ├── config/                 # stackable browser YAML configs
+│   │   │   ├── run/                    # cuawright-web CLI and doctor
+│   │   │   ├── skill_factory/          # learn, verify, and reuse browser skills
+│   │   │   └── utils/                  # evidence, logging, serialization
+│   │   └── desktop/                    # persistent desktop runtime
+│   │       ├── agents/                 # terminal Actor and shared call budget
+│   │       ├── environments/osworld/   # guest commands and image/user/submit controls
+│   │       ├── models/                 # standard Responses API transport and tools
+│   │       ├── config/prompts.py       # Actor, compaction, and phase prompts
+│   │       ├── run/cli.py              # cuawright-desktop CLI
+│   │       ├── run/benchmarks/          # official task setup and evaluation
+│   │       └── utils/                  # artifacts and provenance
+│   └── webwright/__init__.py           # legacy Python import compatibility
+├── skills/cuawright-web/               # browser skill, commands, reference guides
+├── .claude-plugin/                     # Claude Code plugin and marketplace manifests
+├── .codex-plugin/                      # Codex plugin manifest
+├── docs/                               # desktop setup and Skill Factory guides
+├── tests/                              # browser, Skill Factory, compatibility tests
+├── release/osworld/tests/              # desktop request, lifecycle, privacy tests
+├── .github/workflows/                  # runtime and Skill Factory CI
+├── assets/                             # showcase, trajectory viewer, figures, logos
+├── LICENSE                             # MIT browser license
+├── licenses/                           # Apache-2.0 desktop runtime license
+└── NOTICE                              # imported runtime attribution
 ```
-cuawright/
-├── pyproject.toml                 # package: cuawright
-├── src/cuawright/
-│   ├── webwright/                       # Webwright browser runtime
-│   │   ├── run/cli.py             # cuawright-web
-│   │   ├── agents/, models/, environments/, config/, tools/
-│   │   └── skill_factory/
-│   └── desktop/                   # persistent desktop Actor
-│       ├── run/cli.py             # cuawright-desktop
-│       ├── run/benchmarks/osworld.py
-│       └── agents/, models/, environments/, config/, utils/
-├── src/webwright/                 # legacy browser import compatibility
-├── skills/cuawright-web/          # browser plugin skill
-├── docs/desktop.md                # external OSWorld setup and execution
-├── release/osworld/tests/         # desktop contract and failure tests
-├── tests/                         # browser and integration tests
-└── assets/                        # showcase and trajectory viewer
-```
+
+The browser and desktop runtimes remain separate temporarily for backward
+compatibility. They will be merged into one unified runtime soon.
 
 ---
 
