@@ -1,22 +1,44 @@
 """Resolve the model client used by inner tools (image_qa, self_reflection).
 
-The CLI snapshots the fully merged run config to
-``<workspace_dir>/config_snapshot/merged_config.yaml``; the tools read that file
-(or an explicit ``--model-config`` override) and instantiate the same model the
-agent uses.
+Tools read the public run snapshot and recover private connection settings from
+the parent CLI process environment. Explicit --model-config files take precedence.
 """
 
 from __future__ import annotations
 
 import json
+import os
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from cuawright.webwright.config import public_config
 from cuawright.webwright.models import get_model
 
 DEFAULT_MERGED_CONFIG_RELPATH = Path("config_snapshot") / "merged_config.yaml"
+_TOOL_CONNECTION_ENV = "CUAWRIGHT_TOOL_CONNECTION"
+
+
+@contextmanager
+def tool_connection(model_config: dict[str, Any], workspace_dir: str | Path):
+    """Pass private settings to child tools without saving them in run artifacts."""
+    public = public_config(model_config)
+    private = {
+        key: value for key, value in model_config.items() if public[key] != value
+    }
+    previous = os.environ.get(_TOOL_CONNECTION_ENV)
+    os.environ[_TOOL_CONNECTION_ENV] = json.dumps(
+        {"workspace": str(Path(workspace_dir).resolve()), "model": private}
+    )
+    try:
+        yield
+    finally:
+        if previous is None:
+            os.environ.pop(_TOOL_CONNECTION_ENV, None)
+        else:
+            os.environ[_TOOL_CONNECTION_ENV] = previous
 
 
 def _load_structured_config(path: Path) -> dict[str, Any]:
@@ -70,8 +92,15 @@ def load_tool_model(
     workspace_dir: str,
     timeout_seconds: int,
 ) -> Any:
-    config_path = resolve_model_config_path(model_config_arg, workspace_dir=workspace_dir)
+    config_path = resolve_model_config_path(
+        model_config_arg, workspace_dir=workspace_dir
+    )
     config = _load_structured_config(config_path)
     model_block = dict(_extract_model_block(config))
+    connection = os.environ.get(_TOOL_CONNECTION_ENV)
+    if not model_config_arg and connection:
+        private = json.loads(connection)
+        if private["workspace"] == str(Path(workspace_dir).resolve()):
+            model_block.update(private["model"])
     model_block["request_timeout_seconds"] = timeout_seconds
     return get_model(model_block)

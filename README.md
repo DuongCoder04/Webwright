@@ -1,12 +1,9 @@
 # CUAWright
 
-> **Webwright is now CUAWright.** The project has expanded from browser automation
-> to browser and desktop agents. Webwright remains the browser subsystem, now at
-> `cuawright.webwright`; OSWorld 2.0 desktop support lives at `cuawright.desktop`.
-> Use `cuawright web` for browser tasks and `cuawright desktop` for desktop tasks.
-> Existing `webwright` commands and Python imports remain supported.
-> Browser and desktop keep their distinct message, tool, completion, and
-> environment contracts while sharing only small identical utilities.
+> **Webwright is now CUAWright.** Alongside browser automation, you can now run
+> desktop tasks in an Ubuntu VM. Use `cuawright web` for browser tasks and
+> `cuawright desktop` for desktop tasks. Existing `webwright` commands and Python
+> imports still work.
 
 <p align="center">
   <img src="assets/cuawright_logo.svg" alt="CUAWright logo" width="320">
@@ -23,10 +20,9 @@
 - 📝 **Blog:** [Webwright: A Terminal Is All You Need For Web Agents](https://www.microsoft.com/en-us/research/articles/webwright-a-terminal-is-all-you-need-for-web-agents/)
 - 🌐 **Project Page:** [microsoft.github.io/Webwright](https://microsoft.github.io/Webwright/)
 
-CUAWright combines **Webwright browser automation** and a **persistent desktop Actor** for official OSWorld-V2 tasks.
-
-The browser and desktop runtimes intentionally remain separate because browser
-script completion and OSWorld explicit submission/evaluation are different contracts.
+CUAWright gives coding models a terminal to automate browsers and desktop applications.
+Use Webwright to browse the web and build reusable Playwright scripts, or run your
+own desktop task and reproduce OSWorld-V2 benchmarks in an Ubuntu VM.
 
 | Command | Runtime |
 | --- | --- |
@@ -38,6 +34,9 @@ script completion and OSWorld explicit submission/evaluation are different contr
 | `cuawright-desktop` | Compatibility desktop entrypoint |
 | `webwright` | Compatibility alias for `cuawright-web` |
 
+Start with the [browser quick start](#-browser-quick-start) or
+[desktop quick start](#-desktop-quick-start).
+
 ```bash
 pip install -e .
 playwright install chromium
@@ -45,16 +44,14 @@ cuawright-web main -c base.yaml -c model_openai.yaml -t "<task>" --start-url "<u
 ```
 
 For desktop support, use Python 3.12+ and `pip install -e ".[desktop]"`.
-See [Desktop Quick Start](#-desktop-quick-start) for a runnable command and
-[desktop setup and execution](docs/desktop.md) for external provisioning.
-The Python modules are `cuawright.webwright` and `cuawright.desktop`; existing
-`webwright` imports and module entrypoints remain available for compatibility.
-Browser configuration and profile locations remain compatible with Webwright.
-Skill Factory is a [separately installed optional extension](#-skill-factory-turn-solved-tasks-into-runnable-code-skills); normal browser and desktop runs do not require it.
+See [Desktop Quick Start](#-desktop-quick-start) to get started, or
+[REPRODUCE.md](REPRODUCE.md) for the full OSWorld setup instructions.
+To turn completed browser scripts into reusable tools, try the optional
+[Skill Factory](#-skill-factory-turn-solved-tasks-into-runnable-code-skills).
 
-The browser sections below describe the inherited Webwright capabilities and results.
-
-Webwright gives LLM a terminal where it can launch multiple browser sessions to inspect the page and complete a web task. It captures and inspects page screenshots/states only when needed. It enforces each web task to be completed end-to-end within a re-runnable Python script, i.e. your web agent browsing history is a single code file. No multi-agent system, no graph engine, no plugin layer, no hidden orchestration — just a terminal, a browser, and a model.
+Webwright lets a coding model launch browsers, inspect pages, and debug its work
+from a terminal. Script-based runs produce a reusable Python script. Live-browser
+mode keeps a page open across steps and returns an answer without creating a script.
 
 For incremental browsing with native OpenAI `run_command` tool calls, use:
 
@@ -67,12 +64,10 @@ This config keeps a Browserbase cloud session across commands (requires
 `BROWSERBASE_API_KEY` and `BROWSERBASE_PROJECT_ID`), attaches saved images
 through `python -m cuawright.webwright.tools.image_read --path /absolute/workspace/image.png`,
 and uses `self_reflection --scope trajectory` to judge all task screenshots.
-Each turn is one shell tool call or a plain text completion answer. Reasoning and
-tool results are replayed across turns; history compaction disables tool execution.
-Existing script-based configs remain available. Self-reflection rejects incomplete
-image judgments and retries malformed final verdicts.
+The agent runs shell commands, inspects the results, and checks its work before
+finishing. You can also use the script-based configs shown in the browser quick start.
 
-Already got your favorite agents, and wonder how to make Claude Code, Codex, Hermes, OpenClaw more capable in browser tasks? Consider adding [CUAWright browser plugin/skill](#-use-as-a-plugin)!
+Already got your favorite agents, and wonder how to make Claude Code, Codex, Hermes more capable in browser tasks? Consider adding [CUAWright browser plugin/skill](#-use-as-a-plugin)!
 
 ---
 
@@ -82,7 +77,7 @@ Already got your favorite agents, and wonder how to make Claude Code, Codex, Her
 - **2026-09-01** — Persistent step-by-step browsing and native `run_command` tool calls improve performance to **88.1% on Online-Mind2Web** and **77.5% on Odysseys**.
 - **2026-07-21** — Skill Factory: every solve leaves a script behind, distilled into reusable, verified, parameterized code skills that rerun standalone with no model (~40 s, zero tokens). On WebArena, reuse lifts held-out accuracy 55% → 70% (+15 pp). See the optional [Skill Factory](#-skill-factory-turn-solved-tasks-into-runnable-code-skills).
 - **2026-05-11** — Support Task2UI mode: Webwright completes the task and renders task results into an HTML-based web app you can easily view and reuse.  
-- **2026-05-06** — Codex and Claude Code plugin manifests added; install via `/plugin install cuawright@cuawright`. OpenClaw and Hermes Agent integrations shipped; the same `skills/cuawright-web/` folder now loads across Claude Code, Codex, OpenClaw, and Hermes.
+- **2026-05-06** — Codex and Claude Code plugin manifests added; install via `/plugin install cuawright@cuawright`. Hermes Agent integration shipped; the same `skills/cuawright-web/` folder now loads across Claude Code, Codex, and Hermes.
 - **2026-05-04** — Initial public release: ~1.5k LoC, OpenAI / Anthropic / OpenRouter backends, Playwright environment.
 
 ---
@@ -143,7 +138,8 @@ https://github.com/user-attachments/assets/4ed94cd5-11be-4daa-b2d7-1260a803baca
 
 ## 📊 Performance
 
-State-of-the-art on two real-website benchmarks with a 100-step budget — see the [blog post](https://www.microsoft.com/en-us/research/articles/webwright-a-terminal-is-all-you-need-for-web-agents/) for full details.
+The original script-based results below use a 100-step budget. The September
+update in News reports the later persistent-browser configuration. See the [blog post](https://www.microsoft.com/en-us/research/articles/webwright-a-terminal-is-all-you-need-for-web-agents/) for full details.
 
 - 🏆 **Online-Mind2Web (300 tasks):** **86.7%** with GPT-5.4 — highest among open-sourced harnesses in the AutoEval category. Claude Opus 4.7 reaches **84.7%**, and is stronger on the hard split (**80.5%** vs. 76.6% for GPT-5.4 at N=100).
 - 🚀 **Odysseys (200 long-horizon tasks):** **60.1%** with GPT-5.4 (avg. 76.1 steps) — **+15.6 points** over the prior SOTA (Opus 4.6 at 44.5%, using vision based approach and persistent browser) and **+26.6 points** over base GPT-5.4 (33.5% using xy-coordinate prediction and persistent browser).
@@ -165,7 +161,7 @@ CUAWright/
 ├── setup.py                            # desktop provenance in wheels and source archives
 ├── src/
 │   ├── cuawright/
-│   │   ├── core/                       # small identical cross-runtime contracts
+│   │   ├── core/                       # shared API helpers
 │   │   ├── webwright/                  # browser runtime
 │   │   │   ├── agents/                 # browser agent loop
 │   │   │   ├── environments/           # browser and terminal workspaces
@@ -175,10 +171,10 @@ CUAWright/
 │   │   │   ├── run/                    # cuawright-web CLI and doctor
 │   │   │   └── utils/                  # evidence, logging, serialization
 │   │   └── desktop/                    # persistent desktop runtime
-│   │       ├── agents/                 # terminal Actor and shared call budget
-│   │       ├── environments/osworld/   # guest commands and image/user/submit controls
+│   │       ├── agents/                 # desktop agent loop and call budget
+│   │       ├── environments/osworld/   # VM commands, screenshots, and submission
 │   │       ├── models/                 # standard Responses API transport and tools
-│   │       ├── config/prompts.py       # Actor, compaction, and phase prompts
+│   │       ├── config/prompts.py       # desktop prompts
 │   │       ├── setup.py                # pinned OSWorld setup and verification
 │   │       ├── run/cli.py              # custom and official desktop workflows
 │   │       ├── run/benchmarks/          # official task setup and evaluation
@@ -199,8 +195,6 @@ CUAWright/
 ├── licenses/                           # Apache-2.0 desktop runtime license
 └── NOTICE                              # imported runtime attribution
 ```
-
-The browser and desktop runtimes share only the canonical Responses URL contract.
 
 ---
 
@@ -247,11 +241,8 @@ python assets/task_showcase/app.py \
 
 ## 🧠 Skill Factory (turn solved tasks into runnable code skills)
 
-**Optional browser extension.** Browser and desktop execution do not require
-Skill Factory. Enable it only when you want to learn or reuse a library of browser
-automation scripts. It is separate from the host-agent plugin in `skills/`.
-The base `cuawright` wheel excludes Skill Factory and its examples. Install the
-companion package from this checkout to enable it:
+Skill Factory is an optional extension for learning and reusing browser automation
+scripts. Install it from this checkout:
 
 ```bash
 pip install -e ".[skill-factory]" -e extensions/skill-factory
@@ -260,8 +251,6 @@ cuawright-skill-factory --help
 
 For desktop execution and Skill Factory together, use
 `pip install -e ".[desktop,skill-factory]" -e extensions/skill-factory`.
-The import path remains `cuawright.webwright.skill_factory`; learning and reuse
-run only when you invoke them explicitly.
 
 **Most agent skills are context the model reads. Ours are programs.**
 [`cuawright.webwright.skill_factory`](extensions/skill-factory/src/cuawright/webwright/skill_factory/) distills the script every solve leaves
@@ -277,9 +266,10 @@ without a model and compose into the next task instead of re-exploring the site.
   groups solves of the same template and distills one parameterized skill (`build` does solve→learn
   in one shot; `update` is manual-manifest mode).
 
-**Verified twice before it lands:** an input gate keeps a wrong solve from ever feeding a skill, and
-the distilled skill must replay its own answers standalone — no model — so a broken skill can't
-poison the library. New solves widen a skill in place, regression-replayed so old coverage can't break.
+Before adding a skill, the input gate compares the result with gold answers when
+available. Otherwise it checks the output's shape and the agent's reported success;
+this fallback can admit an incorrect answer. The generated script is then replayed
+without a model, and updates are checked against previous examples.
 
 Once learned, a skill **runs standalone in ~40 s with zero tokens**. On WebArena (10 retrieve-type
 templates, 3 self-hosted sites, gpt-5.4) reuse lifts held-out accuracy **55% → 70% (+15 pp)** while
@@ -305,18 +295,21 @@ playwright install chromium
 ### Run
 
 Export credentials for the configured backend (for example, `OPENAI_API_KEY`
-with `model_openai.yaml` or `ANTHROPIC_API_KEY` with `model_claude.yaml`). The
-`image_qa` and `self_reflection` tools use the same configured model by default,
-so an Anthropic run does not require an OpenAI key. Then:
+with `model_openai.yaml` or `ANTHROPIC_API_KEY` with `model_claude.yaml`). Then:
 
 ```bash
 python -m cuawright.webwright.run.cli main \
     -c base.yaml -c model_openai.yaml \
-    -t "Search for flights from SEA to JFK on 2026-08-15 to 2026-08-20" \
-    --start-url https://www.google.com/flights \
+    -t "Report the page title and the destination of its main link." \
+    --start-url https://example.com \
     --task-id demo_openai \
     -o outputs/default
 ```
+
+The `image_qa` and `self_reflection` tools use the run's configured model.
+When running a tool separately, pass `--model-config` with an absolute path to a
+private YAML file containing your `model:` settings. Keep that file outside the
+checkout and results directory.
 
 ### 🚩 Flags
 
@@ -332,11 +325,9 @@ python -m cuawright.webwright.run.cli main \
 
 ## 🖥️ Desktop Quick Start
 
-`cuawright desktop` drives an Ubuntu desktop through a persistent terminal Actor.
-It can inspect application state, run shell commands and automation, read screenshots,
-ask an official task's simulated user for missing information, and explicitly submit
-the saved result. It runs inside the pinned OSWorld-V2 Ubuntu VM; there is no
-arbitrary personal-desktop mode.
+`cuawright desktop` runs tasks in an OSWorld-V2 Ubuntu VM. The agent uses a
+terminal to inspect applications, run commands, view screenshots, and save its work.
+You can give it your own task or run an official benchmark task with a score.
 
 ### Requirements and installation
 
@@ -345,6 +336,15 @@ arbitrary personal-desktop mode.
 
 ```bash
 pip install -e ".[desktop]"
+```
+
+Before setup, accept access to the [tasks](https://huggingface.co/datasets/xlangai/osworld_v2_tasks)
+and [assets](https://huggingface.co/datasets/xlangai/osworld_v2_assets_gated) on
+Hugging Face, then log in:
+
+```bash
+pip install huggingface_hub
+hf auth login
 cuawright setup osworld --root ~/.cache/cuawright/osworld-v2-2026.08.08
 cuawright verify osworld \
   --setup ~/.cache/cuawright/osworld-v2-2026.08.08/setup.json
@@ -376,17 +376,17 @@ cuawright desktop reproduce osworld \
   --task-id 001 --model YOUR_MODEL --reasoning high
 ```
 
-Use `--responses-url` for a standard Responses-compatible full URL and
-`--proxy-config` for official tasks that request a proxy. The default budget is 300 model calls with context
-compaction every 40 calls; multi-phase tasks share the same budget and VM state.
+For another Responses-compatible provider, pass its full API URL with
+`--responses-url`. See [task selection and proxies](REPRODUCE.md#choose-an-official-task)
+for official task IDs and `--proxy-config` setup.
 
-Runs save `manifest.json`, `trace.jsonl`, `result.json`, and screenshot evidence.
-Submitting triggers official evaluation only in `reproduce`; custom runs stop after
-verified submission. Setup, transport, evaluation, persistence,
-and cleanup failures are explicit; credentials, evaluator payloads, and custom API
-endpoints are excluded from public settings and diagnostics.
-See [REPRODUCE.md](REPRODUCE.md) and
-[desktop setup and execution](docs/desktop.md) for the full contract.
+Each run saves its settings in `manifest.json`, the agent's actions in `trace.jsonl`,
+and the outcome in `result.json`. Images viewed by the agent are embedded in the
+trace; desktop runs do not export separate screenshot files. Official benchmark
+runs also include the evaluator score. Files created in the VM are not automatically
+copied to the host; see [custom tasks](REPRODUCE.md#smoke-and-custom-task).
+See [REPRODUCE.md](REPRODUCE.md) for setup, smoke tests, and reproduction commands,
+or [desktop setup and execution](docs/desktop.md) for more detail.
 
 ---
 
@@ -483,33 +483,6 @@ To turn the plugin off without uninstalling, set its entry in `~/.codex/config.t
 </details>
 
 <details>
-<summary><b>🦞 OpenClaw</b></summary>
-
-### Install
-
-Install directly from a local checkout (path, archive, npm spec, git repo, or `clawhub:` spec all work):
-
-```bash
-openclaw plugins install /absolute/path/to/Webwright
-openclaw gateway restart   # reload so the plugin and skill are picked up
-```
-
-Verify:
-
-```bash
-openclaw plugins list | grep cuawright
-openclaw skills  list | grep cuawright   # should show "✓ ready"
-```
-
-### Use
-
-The `cuawright-web` skill is now available to any OpenClaw agent surface (CLI, Telegram, etc.) — invoke it by asking the agent in natural language, or via the slash commands shipped under [`skills/cuawright-web/commands/`](skills/cuawright-web/commands/), e.g. `/cuawright:run <task>`.
-
-To uninstall: `openclaw plugins uninstall cuawright`.
-
-</details>
-
-<details>
 <summary><b>Hermes Agent</b></summary>
 
 ### Install
@@ -568,9 +541,10 @@ ls ~/.codex/sessions/2026/MONTH/DAY/SESSION_ID.jsonl
 | Input | 420,433 | 3,271,143 |
 | Output | 3,593 | 20,040 |
 | Reasoning | 0 | 4,410 |
-| Cached | 217,216 | 3,081,3440 |
+| Cached | 217,216 | — |
 | Total | 424,026 | 3,291,183 |
 
+The Codex cached-token count is omitted because the recorded figure needs verification.
 Individual runs and results may vary.
 
 ---

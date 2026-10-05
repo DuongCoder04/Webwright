@@ -29,10 +29,11 @@
   "vm": {
     "repository": "xlangai/v2-image",
     "repo_type": "dataset",
-    "tag": "v2026.06.24",
+    "tag": "osworld-v2.1",
     "artifact": "osworld-v2-ubuntu-x86.qcow2.zip",
-    "artifact_size": 14189763267,
-    "artifact_sha256": "eb737ae70b49849e24af407de6a518439a23de05a8497096a948334ce0a909aa",
-    "runtime_image": "happysixd/osworld-docker"
+    "artifact_size": 14891811084,
+    "artifact_sha256": "14b08aa7ba6c023ecb91d46de8df5de32af4d1d6bd75ea925519caf9677fc8b3",
+    "runtime_image": "happysixd/osworld-docker",
+    "commit": "6e16459a2feb5a8f1ed65babcfe7a2a6205d049d"
   }
 }

@@ -137,3 +137,37 @@ def test_asset_snapshot_verification_requires_pinned_commit(tmp_path):
     metadata_file.write_text("different\netag\ntime\n")
     with pytest.raises(ReleaseError, match="release lock"):
         setup.verify_assets(assets, release)
+
+
+@pytest.mark.parametrize("valid_checksum", [True, False])
+def test_vm_download_uses_immutable_revision_and_keeps_checksum_check(
+    tmp_path, monkeypatch, valid_checksum
+):
+    import zipfile
+
+    archive = tmp_path / "vm.zip"
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("Ubuntu.qcow2", b"test-vm-image")
+    metadata = setup.release()
+    assert metadata["vm"]["commit"] == "6e16459a2feb5a8f1ed65babcfe7a2a6205d049d"
+    metadata["vm"]["artifact_size"] = archive.stat().st_size
+    metadata["vm"]["artifact_sha256"] = (
+        setup.file_hash(archive) if valid_checksum else "0" * 64
+    )
+    requested = {}
+
+    def download(**kwargs):
+        requested.update(kwargs)
+        return str(archive)
+
+    monkeypatch.setitem(
+        sys.modules, "huggingface_hub", SimpleNamespace(hf_hub_download=download)
+    )
+    if valid_checksum:
+        image = setup.download_vm(tmp_path / "runtime", metadata)
+        assert image.read_bytes() == b"test-vm-image"
+    else:
+        with pytest.raises(setup.ReleaseError, match="does not match release"):
+            setup.download_vm(tmp_path / "runtime", metadata)
+    assert requested["revision"] == metadata["vm"]["commit"]
+    assert requested["revision"] != metadata["vm"]["tag"]

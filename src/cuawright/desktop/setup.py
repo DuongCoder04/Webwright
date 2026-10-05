@@ -124,7 +124,7 @@ def download_vm(root, metadata):
         hf_hub_download(
             repo_id=vm["repository"],
             repo_type=vm["repo_type"],
-            revision=vm["tag"],
+            revision=vm["commit"],
             filename=vm["artifact"],
         )
     )

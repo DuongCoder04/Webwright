@@ -13,6 +13,7 @@ from cuawright.webwright.environments import get_environment
 from cuawright.webwright.models import get_model
 from cuawright.webwright.utils.serialize import UNSET, recursive_merge
 from cuawright.webwright.run.doctor import run_doctor
+from cuawright.webwright.tools._model_config import tool_connection
 
 
 DEFAULT_CONFIGS = ["base.yaml", "model_openai.yaml"]
@@ -93,16 +94,17 @@ def run_one(
     close_exception: Exception | None = None
     result: dict[str, Any] = {}
     try:
-        env.prepare(
-            task=resolved_task,
-            task_id=resolved_task_id,
-            start_url=resolved_start_url,
-        )
-        result = agent.run(
-            resolved_task,
-            task_id=resolved_task_id or "",
-            start_url=resolved_start_url or "",
-        )
+        with tool_connection(config.get("model", {}), resolved_output_dir):
+            env.prepare(
+                task=resolved_task,
+                task_id=resolved_task_id,
+                start_url=resolved_start_url,
+            )
+            result = agent.run(
+                resolved_task,
+                task_id=resolved_task_id or "",
+                start_url=resolved_start_url or "",
+            )
     except Exception as exc:
         run_exception = exc
         if getattr(agent, "messages", None):
