@@ -7,7 +7,12 @@ import json
 from pathlib import Path
 from typing import Any, Literal
 
-from cuawright.webwright.models.tool_calls import RUN_COMMAND_TOOL, TOOL_RESPONSE_MODE, _normalize_response_items, parse_tool_call_output
+from cuawright.webwright.models.tool_calls import (
+    RUN_COMMAND_TOOL,
+    TOOL_RESPONSE_MODE,
+    _normalize_response_items,
+    parse_tool_call_output,
+)
 from cuawright.webwright.models.base import (
     BaseModel,
     BaseModelConfig,
@@ -16,6 +21,7 @@ from cuawright.webwright.models.base import (
     image_part_from_path,
     text_part,
 )
+from cuawright.core.responses import responses_url
 
 __all__ = [
     "OpenAIModel",
@@ -25,7 +31,9 @@ __all__ = [
 ]
 
 
-def _serialize_response_content_part(part: dict[str, Any], *, role: str) -> dict[str, Any]:
+def _serialize_response_content_part(
+    part: dict[str, Any], *, role: str
+) -> dict[str, Any]:
     if part.get("type") == "input_image":
         return {
             "type": "input_image",
@@ -71,7 +79,9 @@ def _serialize_response_input(messages: list[dict[str, Any]]) -> list[dict[str, 
                     if not isinstance(item, dict):
                         continue
                     serialized.append(copy.deepcopy(item))
-                    if item.get("type") == "function_call" and isinstance(item.get("call_id"), str):
+                    if item.get("type") == "function_call" and isinstance(
+                        item.get("call_id"), str
+                    ):
                         pending_calls.append(item["call_id"])
                 continue
             raw_response = extra.get("raw_response")
@@ -79,14 +89,20 @@ def _serialize_response_input(messages: list[dict[str, Any]]) -> list[dict[str, 
                 # Keep the model's complete structured response in history. The
                 # display content contains only its thought, while the command,
                 # completion state, and final response live in raw_response.
-                content = json.dumps(raw_response, ensure_ascii=False, separators=(",", ":"))
+                content = json.dumps(
+                    raw_response, ensure_ascii=False, separators=(",", ":")
+                )
         if isinstance(content, str):
             serialized_content = [text_part(content)]
         else:
             serialized_content = [part for part in content if isinstance(part, dict)]
 
         tool_call_id = extra.get("tool_call_id")
-        if role == "user" and isinstance(tool_call_id, str) and tool_call_id in pending_calls:
+        if (
+            role == "user"
+            and isinstance(tool_call_id, str)
+            and tool_call_id in pending_calls
+        ):
             pending_calls.remove(tool_call_id)
             serialized.append(
                 {
@@ -100,14 +116,17 @@ def _serialize_response_input(messages: list[dict[str, Any]]) -> list[dict[str, 
                 }
             )
             # A function_call_output carries text only; images follow as a user turn.
-            image_parts = [part for part in serialized_content if part.get("type") == "input_image"]
+            image_parts = [
+                part for part in serialized_content if part.get("type") == "input_image"
+            ]
             if image_parts:
                 serialized.append(
                     {
                         "type": "message",
                         "role": "user",
                         "content": [
-                            _serialize_response_content_part(part, role="user") for part in image_parts
+                            _serialize_response_content_part(part, role="user")
+                            for part in image_parts
                         ],
                     }
                 )
@@ -178,6 +197,7 @@ class OpenAIModelConfig(BaseModelConfig):
     reasoning_effort: OptStr = ""
     openai_api_key: OptStr = ""
     openai_endpoint: OptStr = "https://api.openai.com/v1/responses"
+    responses_url: OptStr = ""
 
 
 class OpenAIModel(BaseModel):
@@ -195,18 +215,34 @@ class OpenAIModel(BaseModel):
         }
 
     def _post_url(self) -> str:
-        return self.config.openai_endpoint
+        fields = getattr(self.config, "model_fields_set", set())
+        value = (
+            self.config.openai_endpoint
+            if "openai_endpoint" in fields
+            else self.config.responses_url or self.config.openai_endpoint
+        )
+        return responses_url(value)
 
     def _build_payload(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
         payload = self._build_text_payload(messages)
         if self.config.response_mode == TOOL_RESPONSE_MODE:
-            payload.update(tools=[copy.deepcopy(RUN_COMMAND_TOOL)], parallel_tool_calls=False,
-                           include=["reasoning.encrypted_content"], store=False)
+            payload.update(
+                tools=[copy.deepcopy(RUN_COMMAND_TOOL)],
+                parallel_tool_calls=False,
+                include=["reasoning.encrypted_content"],
+                store=False,
+            )
             if messages and (messages[-1].get("extra") or {}).get("disable_tools"):
                 payload["tool_choice"] = "none"
         else:
-            payload["text"] = {"format": {"type": "json_schema", "name": "playwright_step",
-                                         "schema": self._response_schema(), "strict": True}}
+            payload["text"] = {
+                "format": {
+                    "type": "json_schema",
+                    "name": "playwright_step",
+                    "schema": self._response_schema(),
+                    "strict": True,
+                }
+            }
         return payload
 
     def _parse_response(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -219,12 +255,18 @@ class OpenAIModel(BaseModel):
             return {}
         items = _normalize_response_items(payload)
         extra = {"response_items": items}
-        call = next((item for item in items if item.get("type") == "function_call"), None)
+        call = next(
+            (item for item in items if item.get("type") == "function_call"), None
+        )
         if call:
             extra["tool_call_id"] = call["call_id"]
         extra["reasoning_summary"] = "\n".join(
-            part.get("text", "") for item in items if item.get("type") == "reasoning"
-            for part in item.get("summary", []) if isinstance(part, dict))
+            part.get("text", "")
+            for item in items
+            if item.get("type") == "reasoning"
+            for part in item.get("summary", [])
+            if isinstance(part, dict)
+        )
         return extra
 
     def _build_text_payload(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
@@ -235,7 +277,10 @@ class OpenAIModel(BaseModel):
         }
 
         if self.config.reasoning_effort:
-            payload["reasoning"] = {"effort": self.config.reasoning_effort, "summary": "auto"}
+            payload["reasoning"] = {
+                "effort": self.config.reasoning_effort,
+                "summary": "auto",
+            }
         return payload
 
     def _request_metrics_input(self, payload: dict[str, Any]) -> list[dict[str, Any]]:

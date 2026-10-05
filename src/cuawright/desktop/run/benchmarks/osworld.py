@@ -7,9 +7,9 @@ import math
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from ...agents.default import Actor, RETRY_DELAYS
+from ....core.responses import responses_url
 from ...utils.artifacts import (
     Store,
     credentials,
@@ -33,25 +33,21 @@ from ...exceptions import ReleaseError
 from ...models.utils.actions_toolcall_response import TOOLS
 
 
-@dataclass(frozen=True)
-class Settings:
+@dataclass(frozen=True, kw_only=True)
+class RuntimeSettings:
     source: Path
-    tasks: Path
-    assets: Path
     vm: Path
     credentials: Path
     results: Path
-    task_id: str
     model: str
-    base_url: str = "https://api.openai.com/v1"
+    responses_url: str = "https://api.openai.com/v1/responses"
     reasoning: str = "high"
     steps: int = 300
     compact_every: int = 40
     max_output_tokens: int = 32768
     website_host_suffix: str = ""
-    proxy_config: Path | None = None
 
-    def validate(self):
+    def validate_runtime(self):
         if type(self.steps) is not int or not 1 <= self.steps <= 500:
             raise ReleaseError("steps must be in 1..500")
         if (
@@ -61,33 +57,50 @@ class Settings:
             or not 1 <= self.max_output_tokens <= 32768
         ):
             raise ReleaseError("invalid compaction or output token limit")
-        endpoint = urlsplit(self.base_url)
-        if (
-            endpoint.scheme not in ("http", "https")
-            or not endpoint.hostname
-            or endpoint.username
-            or endpoint.password
-            or endpoint.query
-            or endpoint.fragment
-            or any(character.isspace() for character in self.base_url)
-        ):
-            raise ReleaseError("base URL must be an HTTP endpoint without credentials")
+        try:
+            responses_url(self.responses_url)
+        except ValueError as exc:
+            raise ReleaseError(str(exc)) from None
         if not self.model.strip():
             raise ReleaseError("model must be nonempty")
-        for path in (self.source, self.tasks, self.assets):
-            if not path.is_dir() or path.is_symlink():
-                raise ReleaseError("source, tasks, and assets must be real directories")
+        if not self.source.is_dir() or self.source.is_symlink():
+            raise ReleaseError("source must be a real directory")
         for path in (self.vm, self.credentials):
             if not path.is_file() or path.is_symlink():
                 raise ReleaseError("VM and credentials must be nonsymlink files")
-        if self.proxy_config is not None and (
-            not self.proxy_config.is_file() or self.proxy_config.is_symlink()
-        ):
-            raise ReleaseError("proxy config must be a nonsymlink file")
         if self.results.exists() or self.results.is_symlink():
             raise ReleaseError("results directory must not already exist")
         if not self.results.parent.is_dir():
             raise ReleaseError("results parent must exist")
+        if self.credentials.resolve().is_relative_to(self.results.resolve()):
+            raise ReleaseError("credentials must remain external")
+
+    def public(self):
+        values = asdict(self)
+        values.pop("credentials")
+        values.pop("responses_url")
+        return {
+            key: str(value) if isinstance(value, Path) else value
+            for key, value in values.items()
+        }
+
+
+@dataclass(frozen=True, kw_only=True)
+class Settings(RuntimeSettings):
+    tasks: Path
+    assets: Path
+    task_id: str
+    proxy_config: Path | None = None
+
+    def validate(self):
+        self.validate_runtime()
+        for path in (self.tasks, self.assets):
+            if not path.is_dir() or path.is_symlink():
+                raise ReleaseError("tasks and assets must be real directories")
+        if self.proxy_config is not None and (
+            not self.proxy_config.is_file() or self.proxy_config.is_symlink()
+        ):
+            raise ReleaseError("proxy config must be a nonsymlink file")
         protected = [path.resolve() for path in (self.source, self.tasks, self.assets)]
         if any(self.results.resolve().is_relative_to(path) for path in protected):
             raise ReleaseError(
@@ -99,14 +112,21 @@ class Settings:
             raise ReleaseError("credentials must be outside source, tasks, and assets")
 
     def public(self):
-        values = asdict(self)
-        values.pop("credentials")
+        values = super().public()
         values.pop("proxy_config")
-        values.pop("base_url")
-        return {
-            key: str(value) if isinstance(value, Path) else value
-            for key, value in values.items()
-        }
+        return values
+
+
+@dataclass(frozen=True, kw_only=True)
+class CustomSettings(RuntimeSettings):
+    instruction: str
+
+    def validate(self):
+        self.validate_runtime()
+        if not self.instruction.strip() or len(self.instruction) > 20_000:
+            raise ReleaseError("instruction must contain 1..20000 characters")
+        if self.results.resolve().is_relative_to(self.source.resolve()):
+            raise ReleaseError("results must be separate from source")
 
 
 @contextlib.contextmanager
@@ -269,7 +289,7 @@ def run(settings, client_factory=create_client, guest_factory=Guest):
         previous = configure_external(
             settings.assets.resolve(),
             key,
-            settings.base_url,
+            settings.responses_url,
             settings.website_host_suffix,
             settings.proxy_config,
         )
@@ -409,4 +429,122 @@ def run(settings, client_factory=create_client, guest_factory=Guest):
                 raise ReleaseError("failure result persistence failed") from None
     if failure is not None:
         raise ReleaseError(f"release failed during {stage}") from None
+    return outcome
+
+
+def run_custom(settings, client_factory=create_client, guest_factory=Guest):
+    settings.validate()
+    store = Store(settings.results)
+    env = None
+    client = None
+    actor = None
+    previous = {}
+    failure = None
+    outcome = None
+    stage = "preflight"
+    try:
+        external = activate(settings.source)
+        key = credentials(settings.credentials)
+        previous = configure_external(
+            None, key, settings.responses_url, settings.website_host_suffix
+        )
+        install_compatibility()
+        manifest = {
+            "condition": "osworld-custom-task-v1",
+            "harness": harness_provenance(),
+            "external": external,
+            "vm_sha256": file_hash(settings.vm),
+            "settings": settings.public(),
+            "prompts": {
+                "actor": digest(prompts.ACTOR.encode()),
+                "compaction": digest(prompts.COMPACTION.encode()),
+                "initial": digest(prompts.initial(settings.instruction).encode()),
+                "module": file_hash(Path(prompts.__file__)),
+            },
+            "tools": digest(json.dumps(TOOLS, sort_keys=True).encode()),
+            "guest_clients": CLIENT_HASHES,
+        }
+        store.write("manifest.json", manifest)
+        stage = "desktop_initialization"
+        with quiet_external():
+            desktop_class = importlib.import_module(
+                "desktop_env.desktop_env"
+            ).DesktopEnv
+            env = desktop_class.__new__(desktop_class)
+            desktop_class.__init__(
+                env,
+                provider_name="docker",
+                path_to_vm=str(settings.vm.resolve()),
+                os_type="Ubuntu",
+                action_space="pyautogui",
+                cache_dir=str(store.root / "runtime-cache"),
+                headless=True,
+                require_a11y_tree=True,
+                enable_proxy=False,
+                volume_size=80,
+                force_disable_recording=True,
+            )
+        guest = guest_factory(env)
+        guest.website_host_suffix = settings.website_host_suffix
+        stage = "control_provision"
+        guest.provision_controls()
+        stage = "task_setup"
+        task = {
+            "id": "custom",
+            "instruction": settings.instruction,
+            "platform": "linux",
+            "config": [],
+            "disable_recording": True,
+        }
+        with quiet_external():
+            env.reset(task_config=task)
+        stage = "support_provision"
+        guest.provision_support()
+        client = client_factory(key, settings)
+        stage = "actor"
+        actor = Actor(client, guest, store, settings.instruction, settings)
+        outcome = actor.run()
+        stage = "persistence"
+    except BaseException as exc:
+        failure = exc
+    finally:
+        cleanup_failed = False
+        if env is not None:
+            try:
+                with quiet_external():
+                    env.close()
+            except BaseException:
+                cleanup_failed = True
+        if client is not None:
+            try:
+                client.close()
+            except BaseException:
+                cleanup_failed = True
+        restore_external(previous)
+        if cleanup_failed:
+            failure = ReleaseError("resource cleanup failed")
+            stage = "cleanup"
+        if failure is None:
+            try:
+                store.event("cleanup", {"status": "completed"})
+                store.write("result.json", {"status": "completed", **outcome})
+            except BaseException as exc:
+                failure = exc
+                stage = "persistence"
+        if failure is not None:
+            try:
+                store.write(
+                    "result.json",
+                    {
+                        "status": "failed",
+                        "stage": stage,
+                        "error_type": type(failure).__name__,
+                        "cleanup_failed": cleanup_failed,
+                        "actor": actor.outcome("failed") if actor is not None else None,
+                    },
+                )
+            except BaseException:
+                raise ReleaseError("failure result persistence failed") from None
+    if failure is not None:
+        raise ReleaseError(f"custom task failed during {stage}") from None
     return outcome

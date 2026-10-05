@@ -2,6 +2,7 @@
 
 import subprocess
 import sys
+import os
 
 import pytest
 
@@ -13,12 +14,37 @@ import pytest
 def test_public_module_help(module):
     result = subprocess.run(
         [sys.executable, "-m", module, "--help"],
+        env={
+            **os.environ,
+            "PYTHONPATH": str(__import__("pathlib").Path(__file__).parents[2] / "src"),
+        },
         capture_output=True,
         text=True,
         timeout=30,
     )
     assert result.returncode == 0, result.stderr
     assert "Usage" in result.stdout or "usage" in result.stdout
+
+
+def test_top_level_cli_help():
+    result = subprocess.run(
+        [sys.executable, "-m", "cuawright", "--help"],
+        env={
+            **os.environ,
+            "PYTHONPATH": str(__import__("pathlib").Path(__file__).parents[2] / "src"),
+        },
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0
+    assert "{web,desktop,setup,verify,smoke}" in result.stdout
+
+
+def test_desktop_root_help_shows_both_workflows():
+    from cuawright.desktop.run.cli import main
+
+    assert main(["--help"]) == 0
 
 
 def test_legacy_image_command_remains_brokered():

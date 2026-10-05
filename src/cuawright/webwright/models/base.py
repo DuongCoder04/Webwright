@@ -65,7 +65,9 @@ def _is_rate_limit_error(exc: BaseException | None) -> bool:
         text = str(current).lower()
         if "rate limit" in text or "ratelimit" in text or "too many requests" in text:
             return True
-        current = current.__cause__ if isinstance(current.__cause__, BaseException) else None
+        current = (
+            current.__cause__ if isinstance(current.__cause__, BaseException) else None
+        )
     return False
 
 
@@ -76,14 +78,33 @@ def _is_transient_http_error(exc: BaseException | None) -> bool:
     """
     current: BaseException | None = exc
     while current is not None:
-        if isinstance(current, (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError)):
+        if isinstance(
+            current,
+            (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError),
+        ):
             return True
         status_code = getattr(current, "status_code", None)
-        if isinstance(status_code, int) and status_code in {408, 409, 425, 500, 502, 503, 504}:
+        if isinstance(status_code, int) and status_code in {
+            408,
+            409,
+            425,
+            500,
+            502,
+            503,
+            504,
+        }:
             return True
         response = getattr(current, "response", None)
         response_status = getattr(response, "status_code", None)
-        if isinstance(response_status, int) and response_status in {408, 409, 425, 500, 502, 503, 504}:
+        if isinstance(response_status, int) and response_status in {
+            408,
+            409,
+            425,
+            500,
+            502,
+            503,
+            504,
+        }:
             return True
         text = str(current).lower()
         if any(
@@ -100,11 +121,15 @@ def _is_transient_http_error(exc: BaseException | None) -> bool:
             )
         ):
             return True
-        current = current.__cause__ if isinstance(current.__cause__, BaseException) else None
+        current = (
+            current.__cause__ if isinstance(current.__cause__, BaseException) else None
+        )
     return False
 
 
-def parse_json_output(raw: str, *, action_field: str = "bash_command") -> dict[str, Any]:
+def parse_json_output(
+    raw: str, *, action_field: str = "bash_command"
+) -> dict[str, Any]:
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError as exc:
@@ -140,7 +165,9 @@ def text_part(text: str) -> dict[str, Any]:
     return {"type": "input_text", "text": text}
 
 
-def image_part_from_path(path: Path, *, media_type: str | None = None) -> dict[str, Any]:
+def image_part_from_path(
+    path: Path, *, media_type: str | None = None
+) -> dict[str, Any]:
     mime_type, _ = mimetypes.guess_type(str(path))
     encoded = base64.b64encode(path.read_bytes()).decode("ascii")
     return {
@@ -157,7 +184,9 @@ def _safe_int(value: Any) -> int:
         return 0
 
 
-def _request_metrics_from_serialized_input(serialized_input: list[dict[str, Any]]) -> dict[str, int]:
+def _request_metrics_from_serialized_input(
+    serialized_input: list[dict[str, Any]],
+) -> dict[str, int]:
     message_count = len(serialized_input)
     text_part_count = 0
     image_part_count = 0
@@ -218,7 +247,9 @@ class BaseModelConfig(PydanticBaseModel):
     def validate_action_field(cls, value: str) -> str:
         normalized = value.strip()
         if normalized not in ACTION_FIELDS:
-            raise ValueError(f"action_field must be one of: {', '.join(sorted(ACTION_FIELDS))}")
+            raise ValueError(
+                f"action_field must be one of: {', '.join(sorted(ACTION_FIELDS))}"
+            )
         return normalized
 
 
@@ -246,25 +277,38 @@ class BaseModel:
 
     def __init__(self, *, config_class: type | None = None, **kwargs):
         self.config = (config_class or self._DEFAULT_CONFIG_CLASS)(**kwargs)
-        self._last_request_metrics: dict[str, int] = {k: 0 for k in _REQUEST_METRIC_KEYS}
+        self._last_request_metrics: dict[str, int] = {
+            k: 0 for k in _REQUEST_METRIC_KEYS
+        }
         self._last_usage_metrics: dict[str, int] = {k: 0 for k in _USAGE_METRIC_KEYS}
-        self._cumulative_request_metrics: dict[str, int] = dict(self._last_request_metrics)
+        self._cumulative_request_metrics: dict[str, int] = dict(
+            self._last_request_metrics
+        )
         self._cumulative_usage_metrics: dict[str, int] = dict(self._last_usage_metrics)
 
         if self._API_KEY_FIELD:
             if not getattr(self.config, self._API_KEY_FIELD, ""):
-                setattr(self.config, self._API_KEY_FIELD, os.environ.get(self._ENV_VAR, ""))
+                setattr(
+                    self.config, self._API_KEY_FIELD, os.environ.get(self._ENV_VAR, "")
+                )
             if not getattr(self.config, self._API_KEY_FIELD, ""):
                 raise RuntimeError(f"Missing {self._ENV_VAR}.")
 
         if getattr(self.config, "response_mode", "") == "run_command_tool":
             if self.config.action_field != "bash_command":
-                raise ValueError("run_command_tool requires the local workspace bash_command action field")
-            from cuawright.webwright.models.tool_calls import DEFAULT_TOOL_FORMAT_ERROR_TEMPLATE
+                raise ValueError(
+                    "run_command_tool requires the local workspace bash_command action field"
+                )
+            from cuawright.webwright.models.tool_calls import (
+                DEFAULT_TOOL_FORMAT_ERROR_TEMPLATE,
+            )
+
             self.config.format_error_template = DEFAULT_TOOL_FORMAT_ERROR_TEMPLATE
 
     def _parse_response(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return parse_json_output(self._extract_text(payload), action_field=self.config.action_field)
+        return parse_json_output(
+            self._extract_text(payload), action_field=self.config.action_field
+        )
 
     def _response_extra(self, payload: dict[str, Any]) -> dict[str, Any]:
         return {}
@@ -344,14 +388,25 @@ class BaseModel:
             "cumulative_request": {
                 "message_count": self._cumulative_request_metrics["message_count"],
                 "text_part_count": self._cumulative_request_metrics["text_part_count"],
-                "image_part_count": self._cumulative_request_metrics["image_part_count"],
+                "image_part_count": self._cumulative_request_metrics[
+                    "image_part_count"
+                ],
                 "input_tokens": self._cumulative_usage_metrics["input_tokens"],
-                "cached_input_tokens": self._cumulative_usage_metrics["cached_input_tokens"],
+                "cached_input_tokens": self._cumulative_usage_metrics[
+                    "cached_input_tokens"
+                ],
             },
             "cumulative_response": dict(self._cumulative_usage_metrics),
         }
 
-    def _log_gateway_error(self, *, event: str, attempt: int, error: BaseException) -> None:
+    def _log_gateway_error(
+        self, *, event: str, attempt: int, error: BaseException
+    ) -> None:
+        endpoint = self._post_url()
+
+        def redact(value: str) -> str:
+            return value.replace(endpoint, "[redacted endpoint]")
+
         response = getattr(error, "response", None)
         response_text = ""
         if response is not None:
@@ -361,16 +416,17 @@ class BaseModel:
                 response_text = ""
         if len(response_text) > 4000:
             response_text = response_text[:4000]
+        response_text = redact(response_text)
 
         append_runtime_log(
             self.config.error_log_path,
             source=self._LOG_SOURCE,
             event=event,
             model_name=self.config.model_name,
-            endpoint=self._post_url(),
+            endpoint="[redacted]",
             attempt=attempt,
             error_type=type(error).__name__,
-            error=str(error),
+            error=redact(str(error)),
             status_code=getattr(response, "status_code", None),
             response_text=response_text,
         )
@@ -395,7 +451,9 @@ class BaseModel:
         observation_messages: list[dict[str, Any]] = []
         for output in outputs:
             observation = output.get("observation", {})
-            content = Template(self.config.observation_template, undefined=StrictUndefined).render(
+            content = Template(
+                self.config.observation_template, undefined=StrictUndefined
+            ).render(
                 output=output,
                 observation=observation,
                 **(template_vars or {}),
@@ -425,7 +483,9 @@ class BaseModel:
                     parts.append(image_part_from_path(path))
 
             observation_messages.append(
-                self.format_message(role="user", content=parts, extra={"observation": observation})
+                self.format_message(
+                    role="user", content=parts, extra={"observation": observation}
+                )
             )
         tool_call_id = (message.get("extra") or {}).get("tool_call_id")
         if observation_messages and isinstance(tool_call_id, str):
@@ -437,7 +497,9 @@ class BaseModel:
         return FormatError(
             self.format_message(
                 role="user",
-                content=Template(self.config.format_error_template, undefined=StrictUndefined).render(
+                content=Template(
+                    self.config.format_error_template, undefined=StrictUndefined
+                ).render(
                     error=error,
                     model_response=raw_text,
                     **self.get_template_vars(),
@@ -452,7 +514,9 @@ class BaseModel:
     def _format_repair_message(self, *, raw_text: str, error: str) -> dict[str, Any]:
         return self.format_message(
             role="user",
-            content=Template(self.config.format_error_template, undefined=StrictUndefined).render(
+            content=Template(
+                self.config.format_error_template, undefined=StrictUndefined
+            ).render(
                 error=error,
                 model_response=raw_text,
                 **self.get_template_vars(),
@@ -466,9 +530,13 @@ class BaseModel:
     async def _post_with_retries(self, payload: dict[str, Any]) -> dict[str, Any]:
         headers = self._request_headers()
         url = self._post_url()
-        for attempt in range(max(self._MAX_RATE_LIMIT_RETRIES, self._MAX_TRANSIENT_RETRIES) + 1):
+        for attempt in range(
+            max(self._MAX_RATE_LIMIT_RETRIES, self._MAX_TRANSIENT_RETRIES) + 1
+        ):
             try:
-                async with httpx.AsyncClient(timeout=self.config.request_timeout_seconds) as client:
+                async with httpx.AsyncClient(
+                    timeout=self.config.request_timeout_seconds
+                ) as client:
                     response = await client.post(url, headers=headers, json=payload)
                     response.raise_for_status()
                     return response.json()
@@ -501,7 +569,9 @@ class BaseModel:
         request_messages = list(messages)
         for attempt_index in range(MAX_JSON_PARSE_RETRIES + 1):
             payload = self._build_payload(request_messages)
-            request_metrics = _request_metrics_from_serialized_input(self._request_metrics_input(payload))
+            request_metrics = _request_metrics_from_serialized_input(
+                self._request_metrics_input(payload)
+            )
             self._last_request_metrics = dict(request_metrics)
             for key, value in request_metrics.items():
                 self._cumulative_request_metrics[key] += value
@@ -554,7 +624,11 @@ class BaseModel:
         response_extra = self._response_extra(response_payload)
         content = parsed.get("thought", "")
         if response_extra:
-            content = parsed.get("final_response") or response_extra.get("reasoning_summary") or content
+            content = (
+                parsed.get("final_response")
+                or response_extra.get("reasoning_summary")
+                or content
+            )
         return self.format_message(
             role="assistant",
             content=content,
@@ -579,7 +653,9 @@ class BaseModel:
             self.config.max_output_tokens = max_output_tokens
         try:
             payload = self._build_text_payload(messages)
-            request_metrics = _request_metrics_from_serialized_input(self._request_metrics_input(payload))
+            request_metrics = _request_metrics_from_serialized_input(
+                self._request_metrics_input(payload)
+            )
             self._last_request_metrics = dict(request_metrics)
             for key, value in request_metrics.items():
                 self._cumulative_request_metrics[key] += value
@@ -614,8 +690,14 @@ class BaseModel:
 
     def serialize(self) -> dict[str, Any]:
         config_dump = self.config.model_dump(mode="json")
-        if self._API_KEY_FIELD:
-            config_dump[self._API_KEY_FIELD] = "<redacted>"
+        for key in config_dump:
+            name = key.lower()
+            if (
+                key == self._API_KEY_FIELD
+                or name in {"api_key", "credentials", "base_url", "responses_url"}
+                or name.endswith(("_api_key", "_endpoint", "_base_url"))
+            ):
+                config_dump[key] = "<redacted>"
         return {
             "model": {
                 "config": config_dump,

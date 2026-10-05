@@ -3,10 +3,10 @@
 > **Webwright is now CUAWright.** The project has expanded from browser automation
 > to browser and desktop agents. Webwright remains the browser subsystem, now at
 > `cuawright.webwright`; OSWorld 2.0 desktop support lives at `cuawright.desktop`.
-> Use `cuawright-web` for browser tasks and `cuawright-desktop` for desktop tasks.
+> Use `cuawright web` for browser tasks and `cuawright desktop` for desktop tasks.
 > Existing `webwright` commands and Python imports remain supported.
-> The separate browser and desktop runtimes are temporary to preserve backward
-> compatibility; we plan to merge them into one unified runtime soon.
+> Browser and desktop keep their distinct message, tool, completion, and
+> environment contracts while sharing only small identical utilities.
 
 <p align="center">
   <img src="assets/cuawright_logo.svg" alt="CUAWright logo" width="320">
@@ -25,14 +25,17 @@
 
 CUAWright combines **Webwright browser automation** and a **persistent desktop Actor** for official OSWorld-V2 tasks.
 
-The browser and desktop runtimes are currently separate to preserve backward
-compatibility during the transition. We plan to merge them into one unified
-runtime soon.
+The browser and desktop runtimes intentionally remain separate because browser
+script completion and OSWorld explicit submission/evaluation are different contracts.
 
 | Command | Runtime |
 | --- | --- |
+| `cuawright web` | Browser tasks with Playwright and the Webwright harness |
+| `cuawright desktop run` | Arbitrary task in the pinned OSWorld Ubuntu VM, without a score |
+| `cuawright desktop reproduce osworld` | Official pinned OSWorld task and evaluator |
+| `cuawright setup osworld` | Download or register the pinned OSWorld release |
 | `cuawright-web` | Browser tasks with Playwright and the Webwright harness |
-| `cuawright-desktop` | One official OSWorld-V2 Linux task on Ubuntu via Docker |
+| `cuawright-desktop` | Compatibility desktop entrypoint |
 | `webwright` | Compatibility alias for `cuawright-web` |
 
 ```bash
@@ -75,7 +78,7 @@ Already got your favorite agents, and wonder how to make Claude Code, Codex, Her
 
 ## 📰 News
 
-- **2026-10-03** — **Webwright → CUAWright:** renamed the project to bring browser and desktop agents together. The Webwright browser runtime is now `cuawright.webwright`, with `cuawright-web` as its command. Added `cuawright-desktop` for official OSWorld-V2 Linux tasks on Ubuntu via Docker. Existing `webwright` commands and imports remain compatible. The separate browser and desktop runtimes are a temporary compatibility arrangement; a unified runtime is planned soon. See [desktop setup](docs/desktop.md).
+- **2026-10-03** — **Webwright → CUAWright:** renamed the project to bring browser and desktop agents together. The Webwright browser runtime is now `cuawright.webwright`, and OSWorld desktop support lives at `cuawright.desktop`. Existing `webwright` commands and imports remain compatible. See [desktop setup](docs/desktop.md).
 - **2026-09-01** — Persistent step-by-step browsing and native `run_command` tool calls improve performance to **88.1% on Online-Mind2Web** and **77.5% on Odysseys**.
 - **2026-07-21** — Skill Factory: every solve leaves a script behind, distilled into reusable, verified, parameterized code skills that rerun standalone with no model (~40 s, zero tokens). On WebArena, reuse lifts held-out accuracy 55% → 70% (+15 pp). See the optional [Skill Factory](#-skill-factory-turn-solved-tasks-into-runnable-code-skills).
 - **2026-05-11** — Support Task2UI mode: Webwright completes the task and renders task results into an HTML-based web app you can easily view and reuse.  
@@ -162,6 +165,7 @@ CUAWright/
 ├── setup.py                            # desktop provenance in wheels and source archives
 ├── src/
 │   ├── cuawright/
+│   │   ├── core/                       # small identical cross-runtime contracts
 │   │   ├── webwright/                  # browser runtime
 │   │   │   ├── agents/                 # browser agent loop
 │   │   │   ├── environments/           # browser and terminal workspaces
@@ -175,7 +179,8 @@ CUAWright/
 │   │       ├── environments/osworld/   # guest commands and image/user/submit controls
 │   │       ├── models/                 # standard Responses API transport and tools
 │   │       ├── config/prompts.py       # Actor, compaction, and phase prompts
-│   │       ├── run/cli.py              # cuawright-desktop CLI
+│   │       ├── setup.py                # pinned OSWorld setup and verification
+│   │       ├── run/cli.py              # custom and official desktop workflows
 │   │       ├── run/benchmarks/          # official task setup and evaluation
 │   │       └── utils/                  # artifacts and provenance
 │   └── webwright/__init__.py           # legacy Python import compatibility
@@ -195,8 +200,7 @@ CUAWright/
 └── NOTICE                              # imported runtime attribution
 ```
 
-The browser and desktop runtimes remain separate temporarily for backward
-compatibility. They will be merged into one unified runtime soon.
+The browser and desktop runtimes share only the canonical Responses URL contract.
 
 ---
 
@@ -328,51 +332,61 @@ python -m cuawright.webwright.run.cli main \
 
 ## 🖥️ Desktop Quick Start
 
-`cuawright-desktop` drives an Ubuntu desktop through a persistent terminal Actor.
+`cuawright desktop` drives an Ubuntu desktop through a persistent terminal Actor.
 It can inspect application state, run shell commands and automation, read screenshots,
-ask the task's simulated user for missing information, and submit the saved result
-for official evaluation. Desktop tasks currently run through the OSWorld-V2 adapter;
-this release does not connect to an arbitrary personal desktop.
+ask an official task's simulated user for missing information, and explicitly submit
+the saved result. It runs inside the pinned OSWorld-V2 Ubuntu VM; there is no
+arbitrary personal-desktop mode.
 
 ### Requirements and installation
 
 - **Python 3.12+** and a Responses-compatible model API key.
-- A clean external **OSWorld-V2 v2026.08.08** checkout at commit
-  `d578d2d4e0dc82b43e270fdaa7fa89d9708cd154`, with its dependencies installed in the same interpreter.
-- Docker, a pre-provisioned Ubuntu VM, official Linux V2 tasks and assets, and any
-  websites or proxies required by the selected task.
+- Docker and access to the gated official task and asset snapshots.
 
 ```bash
 pip install -e ".[desktop]"
-cuawright-desktop --help
+cuawright setup osworld --root ~/.cache/cuawright/osworld-v2-2026.08.08
+cuawright verify osworld \
+  --setup ~/.cache/cuawright/osworld-v2-2026.08.08/setup.json
 ```
 
-The installer does not download VM images, tasks, or assets. Put the API key in a
+Setup downloads the pinned source, task classes, assets, and VM by default; existing
+resources can be registered without copying. Put the API key in a
 user-owned file with mode `0600`, outside source, task, asset, and result directories.
 Choose a new result directory whose parent already exists.
 
-### Run one desktop task
+### Run an arbitrary desktop task
 
 ```bash
-cuawright-desktop \
-  --source /absolute/path/to/OSWorld-V2 \
-  --tasks /absolute/path/to/tasks \
-  --assets /absolute/path/to/assets \
-  --vm /absolute/path/to/Ubuntu.qcow2 \
+cuawright desktop run \
+  --setup /absolute/path/to/setup.json \
+  --credentials /absolute/path/to/api-key \
+  --results /absolute/path/to/results/custom \
+  --model YOUR_MODEL \
+  --instruction "<task>"
+```
+
+This workflow has no evaluator or score. For an official scored task:
+
+```bash
+cuawright desktop reproduce osworld \
+  --setup /absolute/path/to/setup.json \
   --credentials /absolute/path/to/api-key \
   --results /absolute/path/to/results/task-001 \
   --task-id 001 --model YOUR_MODEL --reasoning high
 ```
 
-Use `--base-url` for your own Responses-compatible endpoint and `--proxy-config`
-for tasks that request a proxy. The default budget is 300 model calls with context
+Use `--responses-url` for a standard Responses-compatible full URL and
+`--proxy-config` for official tasks that request a proxy. The default budget is 300 model calls with context
 compaction every 40 calls; multi-phase tasks share the same budget and VM state.
 
 Runs save `manifest.json`, `trace.jsonl`, `result.json`, and screenshot evidence.
-Submitting triggers official evaluation. Setup, transport, evaluation, persistence,
+Submitting triggers official evaluation only in `reproduce`; custom runs stop after
+verified submission. Setup, transport, evaluation, persistence,
 and cleanup failures are explicit; credentials, evaluator payloads, and custom API
 endpoints are excluded from public settings and diagnostics.
-See [desktop setup and execution](docs/desktop.md) for the full contract.
+See [REPRODUCE.md](REPRODUCE.md) and
+[desktop setup and execution](docs/desktop.md) for the full contract.
 
 ---
 

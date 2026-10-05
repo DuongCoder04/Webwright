@@ -785,6 +785,9 @@ def test_task_selection_and_config_are_host_only(workspace, official):
     prepare_task(options)
     task, instruction, provenance = source.load_task(options.tasks, "001")
     assert task is official
+    assert provenance["class_sha256"] == storage.file_hash(
+        options.tasks / "task_001.py"
+    )
     assert instruction == official["instruction"]
     assert set(provenance) == {"id", "class_sha256", "source_tree", "config_sha256"}
     assert "HIDDEN-EVALUATOR-ANSWER" not in json.dumps(provenance)
@@ -817,6 +820,7 @@ def test_unsupported_task_surfaces_fail_before_vm(
         official_type = type(official)
         official_type.evaluate = official_type.__bases__[0].evaluate
     else:
+        (options.tasks / "task_001.py").unlink()
         monkeypatch.setattr(
             sys.modules["task_loader"], "find_task_class_path", lambda *_: None
         )
@@ -909,9 +913,13 @@ def test_credentials_permissions_symlinks_and_safe_settings(workspace):
     with pytest.raises(OSError):
         storage.credentials(link)
     with pytest.raises(exceptions.ReleaseError, match="credentials"):
-        replace(options, base_url="https://secret@example.com/v1").validate()
+        replace(
+            options, responses_url="https://secret@example.com/v1/responses"
+        ).validate()
     with pytest.raises(exceptions.ReleaseError, match="credentials"):
-        replace(options, base_url="https://example.com/v1?key=secret").validate()
+        replace(
+            options, responses_url="https://example.com/v1/responses?key=secret"
+        ).validate()
     options.results.mkdir()
     with pytest.raises(exceptions.ReleaseError, match="already exist"):
         options.validate()
@@ -1001,7 +1009,10 @@ def test_runtime_closure_line_threshold_and_no_legacy_imports():
                 )
             elif isinstance(node, ast.ImportFrom):
                 if node.level:
-                    assert node.level <= len(path.relative_to(package).parts)
+                    assert node.level <= len(path.relative_to(package).parts) or (
+                        node.level == len(path.relative_to(package).parts) + 1
+                        and node.module == "core.responses"
+                    )
                 else:
                     assert not (node.module or "").startswith("cuawright.")
     print("Runtime physical lines:", sum(counts.values()), counts)
@@ -1011,7 +1022,7 @@ def test_help_does_not_import_osworld_or_openai():
     command = (
         "import sys; from cuawright.desktop.run.cli import main; "
         "assert 'desktop_env' not in sys.modules; assert 'openai' not in sys.modules; "
-        "main(['--help'])"
+        "main(['reproduce', '--help'])"
     )
     result = subprocess.run(
         [
@@ -1076,6 +1087,7 @@ def test_root_metadata_includes_web_and_desktop():
     project = metadata["project"]
     assert project["name"] == "cuawright"
     assert project["scripts"] == {
+        "cuawright": "cuawright.cli:main",
         "cuawright-web": "cuawright.webwright.run.cli:app",
         "cuawright-desktop": "cuawright.desktop.run.cli:main",
         "webwright": "cuawright.webwright.run.cli:app",
@@ -1095,12 +1107,53 @@ def test_root_metadata_includes_web_and_desktop():
 
 
 def test_custom_endpoint_and_credentials_are_not_public_settings(workspace):
-    options = settings(workspace, base_url="https://private-provider.invalid/v1")
+    options = settings(
+        workspace,
+        responses_url="https://gateway.example/v1/responses",
+    )
     public = options.public()
-    assert "base_url" not in public
+    assert "responses_url" not in public
     assert "credentials" not in public
     assert "proxy_config" not in public
-    assert "private-provider.invalid" not in json.dumps(public)
+    assert "gateway.example" not in json.dumps(public)
+
+
+def test_custom_task_uses_same_actor_vm_and_submit_contract(workspace, official):
+    baseline = settings(workspace, steps=2, compact_every=0)
+    options = runner.CustomSettings(
+        source=baseline.source,
+        vm=baseline.vm,
+        credentials=baseline.credentials,
+        results=baseline.results,
+        model=baseline.model,
+        instruction="Create and verify a text file.",
+        steps=2,
+        compact_every=0,
+    )
+    client = FakeClient([[function("python /opt/cuawright-tools/submit.py")]])
+    outcome = runner.run_custom(
+        options, client_factory=lambda *_: client, guest_factory=FakeGuest
+    )
+    assert outcome == {
+        "stop_reason": "submitted",
+        "model_calls": 1,
+        "commands": 1,
+        "compactions": 0,
+    }
+    environment = FakeEnv.instances[-1]
+    assert environment.closed and client.closed
+    assert environment.task == {
+        "id": "custom",
+        "instruction": options.instruction,
+        "platform": "linux",
+        "config": [],
+        "disable_recording": True,
+    }
+    result = json.loads((options.results / "result.json").read_text())
+    manifest = json.loads((options.results / "manifest.json").read_text())
+    assert "score" not in result
+    assert manifest["condition"] == "osworld-custom-task-v1"
+    assert manifest["settings"]["instruction"] == options.instruction
 
 
 def test_desktop_source_contains_only_public_or_loopback_urls():
@@ -1108,7 +1161,7 @@ def test_desktop_source_contains_only_public_or_loopback_urls():
     import re
     from urllib.parse import urlsplit
 
-    allowed_hosts = {"api.openai.com", "github.com", "127.0.0.1"}
+    allowed_hosts = {"api.openai.com", "github.com", "huggingface.co", "127.0.0.1"}
     for path in (ROOT / "src/cuawright/desktop").rglob("*.py"):
         text = path.read_text()
         for url in re.findall(r"https?://[^\s\"'<>`]+", text):

@@ -2,7 +2,7 @@
 # modifier, for example:
 #
 #   python -m cuawright.webwright.run.cli \
-#     -c base.yaml -c local_browser.yaml -c model_openai.yaml \
+#     -c base.yaml -c model_openai.yaml -c local_browser.yaml \
 #     -t "Open example.com and report the title" \
 #     --start-url https://example.com
 #
@@ -33,6 +33,8 @@
 # the real browser window size instead of forcing a Playwright viewport.
 
 model:
+  # Live browser actions are async Python snippets, not shell run_command calls.
+  response_mode: json_schema
   action_field: python_code
   observation_template: |
     Observation:

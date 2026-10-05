@@ -46,8 +46,13 @@ def load_task(tasks, task_id):
     if not re.fullmatch(r"[A-Za-z0-9_-]+", task_id):
         raise ReleaseError("invalid task identity")
     tasks = Path(tasks).resolve(strict=True)
+    direct = tasks / f"task_{task_id}.py"
     loader = importlib.import_module("task_loader")
-    path = loader.find_task_class_path(task_id, str(tasks), "tasks", "v2")
+    path = (
+        str(direct)
+        if direct.is_file()
+        else loader.find_task_class_path(task_id, str(tasks), "tasks", "v2")
+    )
     if not path:
         raise ReleaseError("only official V2 Python class tasks are supported")
     path = Path(path).resolve(strict=True)
@@ -85,9 +90,13 @@ def load_task(tasks, task_id):
     return task, instruction, task_provenance
 
 
-def configure_external(assets, key, base_url, website_host_suffix, proxy_config=None):
+def configure_external(
+    assets, key, responses_url, website_host_suffix, proxy_config=None
+):
+    from ....core.responses import sdk_base_url
+
+    base_url = sdk_base_url(responses_url)
     values = {
-        "OSWORLD_FILE_BASE_URL": str(assets),
         "WEBSITE_HOST_SUFFIX": website_host_suffix,
         "OPENAI_API_KEY": key,
         "OPENAI_BASE_URL": base_url,
@@ -97,6 +106,8 @@ def configure_external(assets, key, base_url, website_host_suffix, proxy_config=
         "OSWORLD_USER_SIM_API_KEY": key,
         "OSWORLD_USER_SIM_BASE_URL": base_url,
     }
+    if assets is not None:
+        values["OSWORLD_FILE_BASE_URL"] = str(assets)
     names = (*values, "PROXY_CONFIG_FILE")
     previous = {name: os.environ.get(name) for name in names}
     os.environ.update(values)

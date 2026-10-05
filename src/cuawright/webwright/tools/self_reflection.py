@@ -372,7 +372,6 @@ class SelfReflectionResult:
     def to_dict(self) -> dict[str, Any]:
         return {
             "model": self.model,
-            "endpoint": self.endpoint,
             "predicted_label": self.predicted_label,
             "final_response": self.final_response,
             "final_user_text": self.final_user_text,

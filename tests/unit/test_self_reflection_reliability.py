@@ -41,6 +41,7 @@ def test_malformed_verdict_is_retried(monkeypatch, tmp_path):
                              ['Reasoning: satisfied\nScore: 5', 'unknown', 'Status: success'])
     result = asyncio.run(judge.run_self_reflection_async(**kwargs))
     assert result.predicted_label == 1
+    assert "endpoint" not in result.to_dict()
     assert len(calls) == 3
     assert calls[-1]['user_content'][1]['type'] == 'input_image'
 
