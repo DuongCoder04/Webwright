@@ -17,6 +17,7 @@
   <img src="https://img.shields.io/badge/backends-OpenAI%20%7C%20Anthropic%20%7C%20OpenRouter-orange" alt="Backends">
 </p>
 
+- 📄 **Paper:** [CUAWright: A Minimal Unified Interface for Digital Agents](https://arxiv.org/abs/2610.04116)
 - 📝 **Blog:** [Webwright: A Terminal Is All You Need For Web Agents](https://www.microsoft.com/en-us/research/articles/webwright-a-terminal-is-all-you-need-for-web-agents/)
 - 🌐 **Project Page:** [microsoft.github.io/Webwright](https://microsoft.github.io/Webwright/)
 
@@ -92,28 +93,35 @@ How they differ at the architectural level:
 ---
 
 ## 🎥 Demo
-https://github.com/user-attachments/assets/4ed94cd5-11be-4daa-b2d7-1260a803baca
 
+**CUAWright demo**
 
 https://github.com/user-attachments/assets/2063be64-4d0a-40a2-9d1f-7906be43f2c9
 
+<details>
+<summary><strong>Webwright demo</strong></summary>
+
+https://github.com/user-attachments/assets/4ed94cd5-11be-4daa-b2d7-1260a803baca
+
+</details>
 
 ---
 
 ## 📊 Performance
 
-The original script-based results below use a 100-step budget. The September
-update in News reports the later persistent-browser configuration. See the [blog post](https://www.microsoft.com/en-us/research/articles/webwright-a-terminal-is-all-you-need-for-web-agents/) for full details.
-
-- 🏆 **Online-Mind2Web (300 tasks):** **86.7%** with GPT-5.4 — highest among open-sourced harnesses in the AutoEval category. Claude Opus 4.7 reaches **84.7%**, and is stronger on the hard split (**80.5%** vs. 76.6% for GPT-5.4 at N=100).
-- 🚀 **Odysseys (200 long-horizon tasks):** **60.1%** with GPT-5.4 (avg. 76.1 steps) — **+15.6 points** over the prior SOTA (Opus 4.6 at 44.5%, using vision based approach and persistent browser) and **+26.6 points** over base GPT-5.4 (33.5% using xy-coordinate prediction and persistent browser).
-- 🧠 **Code-as-action beats coordinate prediction:** Webwright substantially outperforms a reproduced GPT-5.4 screenshot+xy-coordinate baseline across all difficulty splits.
-- 🧰 **Small models + reusable tools:** generated scripts can be packaged as parameterized CLI tools — even **Qwen-3.5-9B** completes tasks well on Online-Mind2Web sites with 5+ tools available.
+CUAWright beats the same model running in a different harness on every benchmark
+below, from desktop and CAD to long-horizon web tasks. See the
+[paper](https://arxiv.org/abs/2610.04116) for full details.
 
 <p align="center">
-  <img src="assets/odysseys_eval_step100.png" alt="Odysseys long-horizon eval @ 100 steps" width="49%">
-  <img src="assets/om2w_autoeval_step100.png" alt="Online-Mind2Web AutoEval @ 100 steps" width="49%">
+  <img src="assets/main_results.png" alt="CUAWright results on OSWorld-V2, CADGenBench, BenchCAD, Online-Mind2Web, Odysseys, and WeaveBench" width="49%">
+  <img src="assets/osworld_v2_cost.png" alt="OSWorld-V2 partial score versus API cost per task" width="49%">
 </p>
+
+- 🖥️ **OSWorld-V2:** **67.9%** partial score with GPT-5.6 Sol (+5.2 over GPT-5.6 Sol alone) and **63.2%** with GPT-5.5 (+15.7 over the official GPT-5.5 OSWorld agent).
+- 🌐 **Web:** **88.1%** on Online-Mind2Web and **77.5%** on Odysseys with GPT-5.4, against 83.4% and 33.5% for a GPT-5.4 GUI agent.
+- 📐 **CAD:** **79.0%** Vision2Code mean IoU on BenchCAD with GPT-5.5, and **55.7%** aggregate score on CADGenBench with GPT-5.6 Sol.
+- 💰 **Cost:** on OSWorld-V2, CUAWright raises the score while cutting API cost by $9.5 per task with GPT-5.6 Sol and $6.0 per task with GPT-5.5.
 
 ---
 
@@ -552,9 +560,19 @@ Individual runs and results may vary.
 
 ## Citation
 
-If you use Webwright in your research or build on it, please cite this repository:
+If you use CUAWright or Webwright in your research or build on it, please cite:
 
 ```bibtex
+@misc{lu2026cuawright,
+  title         = {CUAWright: A Minimal Unified Interface for Digital Agents},
+  author        = {Lu, Yadong and Lee, Theodore and Li, Yifei and Jang, Lawrence Keunho and Xue, Tianci and Su, Yu and Sun, Huan and Awadallah, Ahmed Hassan},
+  year          = {2026},
+  eprint        = {2610.04116},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.AI},
+  url           = {https://arxiv.org/abs/2610.04116}
+}
+
 @misc{webwright2026,
   title        = {Webwright: A terminal is all you need for web agents},
   author       = {Lu, Yadong and Xu, Lingrui and Huang, Chao and Awadallah, Ahmed},
