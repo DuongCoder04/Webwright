@@ -145,8 +145,16 @@ cuawright desktop reproduce osworld \
   --task-id 001 \
   --model YOUR_MODEL \
   --responses-url https://api.example/v1/responses \
-  --reasoning high
+  --reasoning xhigh
 ```
+
+`--reasoning` defaults to `xhigh`. To reproduce a reported score, pass the
+effort used for that model:
+
+| Model | `--reasoning` | OSWorld-V2 partial score |
+| --- | --- | --- |
+| GPT-5.6 Sol | `max` | 67.9 |
+| GPT-5.5 | `xhigh` | 63.2 |
 
 The result directory must not exist before launch, and its parent must exist.
 The run saves:

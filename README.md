@@ -24,48 +24,8 @@ CUAWright gives coding models a terminal to automate browsers and desktop applic
 Use Webwright to browse the web and build reusable Playwright scripts, or run your
 own desktop task and reproduce OSWorld-V2 benchmarks in an Ubuntu VM.
 
-| Command | Runtime |
-| --- | --- |
-| `cuawright web` | Browser tasks with Playwright and the Webwright harness |
-| `cuawright desktop run` | Arbitrary task in the pinned OSWorld Ubuntu VM, without a score |
-| `cuawright desktop reproduce osworld` | Official pinned OSWorld task and evaluator |
-| `cuawright setup osworld` | Download or register the pinned OSWorld release |
-| `cuawright-web` | Browser tasks with Playwright and the Webwright harness |
-| `cuawright-desktop` | Compatibility desktop entrypoint |
-| `webwright` | Compatibility alias for `cuawright-web` |
-
 Start with the [browser quick start](#-browser-quick-start) or
-[desktop quick start](#-desktop-quick-start).
-
-```bash
-pip install -e .
-playwright install chromium
-cuawright-web main -c base.yaml -c model_openai.yaml -t "<task>" --start-url "<url>"
-```
-
-For desktop support, use Python 3.12+ and `pip install -e ".[desktop]"`.
-See [Desktop Quick Start](#-desktop-quick-start) to get started, or
-[REPRODUCE.md](REPRODUCE.md) for the full OSWorld setup instructions.
-To turn completed browser scripts into reusable tools, try the optional
-[Skill Factory](#-skill-factory-turn-solved-tasks-into-runnable-code-skills).
-
-Webwright lets a coding model launch browsers, inspect pages, and debug its work
-from a terminal. Script-based runs produce a reusable Python script. Live-browser
-mode keeps a page open across steps and returns an answer without creating a script.
-
-For incremental browsing with native OpenAI `run_command` tool calls, use:
-
-```bash
-cuawright-web main -c best_default_judge_json_persistent_cli.yaml -c model_openai.yaml \
-  -t "<task>" --start-url "<url>" --task-id example -o outputs/example
-```
-
-This config keeps a Browserbase cloud session across commands (requires
-`BROWSERBASE_API_KEY` and `BROWSERBASE_PROJECT_ID`), attaches saved images
-through `python -m cuawright.webwright.tools.image_read --path /absolute/workspace/image.png`,
-and uses `self_reflection --scope trajectory` to judge all task screenshots.
-The agent runs shell commands, inspects the results, and checks its work before
-finishing. You can also use the script-based configs shown in the browser quick start.
+[desktop quick start](#desktop-quick-start).
 
 Already got your favorite agents, and wonder how to make Claude Code, Codex, Hermes more capable in browser tasks? Consider adding [CUAWright browser plugin/skill](#-use-as-a-plugin)!
 
@@ -198,86 +158,11 @@ CUAWright/
 
 ---
 
-## 📰 Task Showcase (repeatable runs as a dashboard)
-
-A tiny Flask app under [`assets/task_showcase/`](assets/task_showcase/README.md) consolidates
-Webwright runs for **repeatable** odyssey tasks (deals, inventory, listings,
-job boards, weather, etc.) into a single dashboard. Each task ships only two
-files — `task.json` (metadata) and `report.json` (curated, structured output:
-sources + result sections like tables, lists, summaries) — and the templates
-render them generically, so adding a new task is just dropping a new folder
-in `assets/task_showcase/tasks/`.
-
-```bash
-pip install flask
-python assets/task_showcase/app.py    # http://127.0.0.1:5005
-```
-
-To have Webwright produce a renderer-ready task folder at runtime, stack the
-Task Showcase overlay:
-
-```bash
-python -m cuawright.webwright.run.cli main \
-    -c base.yaml -c model_openai.yaml -c task_showcase.yaml \
-    -t "<repeatable web task>" \
-    --task-id my_repeatable_task \
-    -o outputs/default
-```
-
-> **Note:** `report.json` is only generated when `-c task_showcase.yaml` is
-> included. A plain `base.yaml` run produces `trajectory.json` and debug
-> artifacts but no `report.json`.
-
-The run writes `task_showcase/tasks/<short_id>/task.json` and `report.json`
-inside the output workspace. Render those generated files without copying them
-back into the repo:
-
-```bash
-python assets/task_showcase/app.py \
-    --tasks-dir outputs/default/<run>/task_showcase/tasks
-```
-
----
-
-## 🧠 Skill Factory (turn solved tasks into runnable code skills)
-
-Skill Factory is an optional extension for learning and reusing browser automation
-scripts. Install it from this checkout:
-
-```bash
-pip install -e ".[skill-factory]" -e extensions/skill-factory
-cuawright-skill-factory --help
-```
-
-For desktop execution and Skill Factory together, use
-`pip install -e ".[desktop,skill-factory]" -e extensions/skill-factory`.
-
-**Most agent skills are context the model reads. Ours are programs.**
-[`cuawright.webwright.skill_factory`](extensions/skill-factory/src/cuawright/webwright/skill_factory/) distills the script every solve leaves
-behind into a growing library of **reusable, verified, parameterized skills** — code you can run
-without a model and compose into the next task instead of re-exploring the site. Plugs in with
-**no change to the agent loop**:
-
-- **Reuse** — before a solve starts, the library is checked *out of the agent loop* (`recommend`):
-  `route` either runs a matching skill directly (no model) or injects it into the prompt as a prior
-  (`{verdict: run|adapt|skip, skill_id, source_path}`); the agent reuses the hint without ever
-  querying the library itself.
-- **Grow** — afterwards, `python -m cuawright.webwright.skill_factory learn outputs/ --library ./library`
-  groups solves of the same template and distills one parameterized skill (`build` does solve→learn
-  in one shot; `update` is manual-manifest mode).
-
-Before adding a skill, the input gate compares the result with gold answers when
-available. Otherwise it checks the output's shape and the agent's reported success;
-this fallback can admit an incorrect answer. The generated script is then replayed
-without a model, and updates are checked against previous examples.
-
-Once learned, a skill **runs standalone in ~40 s with zero tokens**. On WebArena (10 retrieve-type
-templates, 3 self-hosted sites, gpt-5.4) reuse lifts held-out accuracy **55% → 70% (+15 pp)** while
-cutting steps. See [`extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md`](extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md).
-
----
-
 ## 🚀 Browser Quick Start
+
+Webwright lets a coding model launch browsers, inspect pages, and debug its work
+from a terminal. Script-based runs produce a reusable Python script. Live-browser
+mode keeps a page open across steps and returns an answer without creating a script.
 
 ### Prerequisites
 
@@ -292,7 +177,7 @@ pip install -e .
 playwright install chromium
 ```
 
-### Run
+### Script-based run
 
 Export credentials for the configured backend (for example, `OPENAI_API_KEY`
 with `model_openai.yaml` or `ANTHROPIC_API_KEY` with `model_claude.yaml`). Then:
@@ -311,6 +196,21 @@ When running a tool separately, pass `--model-config` with an absolute path to a
 private YAML file containing your `model:` settings. Keep that file outside the
 checkout and results directory.
 
+### Live-browser mode
+
+For incremental browsing with native OpenAI `run_command` tool calls, use:
+
+```bash
+cuawright-web main -c best_default_judge_json_persistent_cli.yaml -c model_openai.yaml \
+  -t "<task>" --start-url "<url>" --task-id example -o outputs/example
+```
+
+This config keeps a Browserbase cloud session across commands. Set
+`OPENAI_API_KEY`, `BROWSERBASE_API_KEY`, and `BROWSERBASE_PROJECT_ID` before running.
+The agent runs shell commands, inspects the results, and checks its work before
+finishing. See the [browser workflow guide](docs/browser.md) for image reading and
+trajectory verification.
+
 ### 🚩 Flags
 
 | Flag | Description |
@@ -322,6 +222,8 @@ checkout and results directory.
 | `-o` | Output directory. |
 
 ---
+
+<a id="desktop-quick-start"></a>
 
 ## 🖥️ Desktop Quick Start
 
@@ -373,7 +275,7 @@ cuawright desktop reproduce osworld \
   --setup /absolute/path/to/setup.json \
   --credentials /absolute/path/to/api-key \
   --results /absolute/path/to/results/task-001 \
-  --task-id 001 --model YOUR_MODEL --reasoning high
+  --task-id 001 --model YOUR_MODEL --reasoning xhigh
 ```
 
 For another Responses-compatible provider, pass its full API URL with
@@ -504,7 +406,95 @@ Note: the named subcommands shipped under [`skills/cuawright-web/commands/`](ski
 
 </details>
 
-## 📃 Trajectory Comparison & Viewer
+<a id="-task-showcase-repeatable-runs-as-a-dashboard"></a>
+
+<details>
+<summary><b>📰 Task Showcase (repeatable runs as a dashboard)</b></summary>
+
+A tiny Flask app under [`assets/task_showcase/`](assets/task_showcase/README.md) consolidates
+Webwright runs for **repeatable** odyssey tasks (deals, inventory, listings,
+job boards, weather, etc.) into a single dashboard. Each task ships only two
+files — `task.json` (metadata) and `report.json` (curated, structured output:
+sources + result sections like tables, lists, summaries) — and the templates
+render them generically, so adding a new task is just dropping a new folder
+in `assets/task_showcase/tasks/`.
+
+```bash
+pip install flask
+python assets/task_showcase/app.py    # http://127.0.0.1:5005
+```
+
+To have Webwright produce a renderer-ready task folder at runtime, stack the
+Task Showcase overlay:
+
+```bash
+python -m cuawright.webwright.run.cli main \
+    -c base.yaml -c model_openai.yaml -c task_showcase.yaml \
+    -t "<repeatable web task>" \
+    --task-id my_repeatable_task \
+    -o outputs/default
+```
+
+> **Note:** `report.json` is only generated when `-c task_showcase.yaml` is
+> included. A plain `base.yaml` run produces `trajectory.json` and debug
+> artifacts but no `report.json`.
+
+The run writes `task_showcase/tasks/<short_id>/task.json` and `report.json`
+inside the output workspace. Render those generated files without copying them
+back into the repo:
+
+```bash
+python assets/task_showcase/app.py \
+    --tasks-dir outputs/default/<run>/task_showcase/tasks
+```
+
+</details>
+
+<a id="-skill-factory-turn-solved-tasks-into-runnable-code-skills"></a>
+
+<details>
+<summary><b>🧠 Skill Factory (turn solved tasks into runnable code skills)</b></summary>
+
+Skill Factory is an optional extension for learning and reusing browser automation
+scripts. Install it from this checkout:
+
+```bash
+pip install -e ".[skill-factory]" -e extensions/skill-factory
+cuawright-skill-factory --help
+```
+
+For desktop execution and Skill Factory together, use
+`pip install -e ".[desktop,skill-factory]" -e extensions/skill-factory`.
+
+**Most agent skills are context the model reads. Ours are programs.**
+[`cuawright.webwright.skill_factory`](extensions/skill-factory/src/cuawright/webwright/skill_factory/) distills the script every solve leaves
+behind into a growing library of **reusable, verified, parameterized skills** — code you can run
+without a model and compose into the next task instead of re-exploring the site. Plugs in with
+**no change to the agent loop**:
+
+- **Reuse** — before a solve starts, the library is checked *out of the agent loop* (`recommend`):
+  `route` either runs a matching skill directly (no model) or injects it into the prompt as a prior
+  (`{verdict: run|adapt|skip, skill_id, source_path}`); the agent reuses the hint without ever
+  querying the library itself.
+- **Grow** — afterwards, `python -m cuawright.webwright.skill_factory learn outputs/ --library ./library`
+  groups solves of the same template and distills one parameterized skill (`build` does solve→learn
+  in one shot; `update` is manual-manifest mode).
+
+Before adding a skill, the input gate compares the result with gold answers when
+available. Otherwise it checks the output's shape and the agent's reported success;
+this fallback can admit an incorrect answer. The generated script is then replayed
+without a model, and updates are checked against previous examples.
+
+Once learned, a skill **runs standalone in ~40 s with zero tokens**. On WebArena (10 retrieve-type
+templates, 3 self-hosted sites, gpt-5.4) reuse lifts held-out accuracy **55% → 70% (+15 pp)** while
+cutting steps. See [`extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md`](extensions/skill-factory/src/cuawright/webwright/skill_factory/README.md).
+
+</details>
+
+<a id="-trajectory-comparison--viewer"></a>
+
+<details>
+<summary><b>📃 Trajectory Comparison &amp; Viewer</b></summary>
 
 You can run the same tasks using the Webwright harness and its Codex / GitHub Copilot skill variant, and see how token usage and trajectories stack up between different harnesses. The trajectory viewer supports Codex, GitHub Copilot and Webwright harness traces.
 
@@ -548,6 +538,8 @@ The Codex cached-token count is omitted because the recorded figure needs verifi
 Individual runs and results may vary.
 
 ---
+
+</details>
 
 ## Credits
 

@@ -41,7 +41,7 @@ class RuntimeSettings:
     results: Path
     model: str
     responses_url: str = "https://api.openai.com/v1/responses"
-    reasoning: str = "high"
+    reasoning: str = "xhigh"
     steps: int = 300
     compact_every: int = 40
     max_output_tokens: int = 32768

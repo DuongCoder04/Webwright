@@ -17,7 +17,7 @@ def common(parser):
         "--responses-url", default="https://api.openai.com/v1/responses"
     )
     parser.add_argument(
-        "--reasoning", choices=("low", "medium", "high", "xhigh", "max"), default="high"
+        "--reasoning", choices=("low", "medium", "high", "xhigh", "max"), default="xhigh"
     )
     parser.add_argument("--steps", type=int, default=300)
     parser.add_argument("--compact-every", type=int, default=40)

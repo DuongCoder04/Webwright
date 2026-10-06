@@ -339,7 +339,7 @@ def test_golden_request_exact_schema_flags_messages_budget(workspace):
             }
         ],
         "parallel_tool_calls": False,
-        "reasoning": {"effort": "high", "summary": "auto"},
+        "reasoning": {"effort": "xhigh", "summary": "auto"},
         "include": ["reasoning.encrypted_content"],
         "store": False,
         "max_output_tokens": 32768,
