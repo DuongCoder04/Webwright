@@ -19,7 +19,7 @@
 
 - 📄 **Paper:** [CUAWright: A Minimal Unified Interface for Digital Agents](https://arxiv.org/abs/2610.04116)
 - 📝 **Blog:** [Webwright: A Terminal Is All You Need For Web Agents](https://www.microsoft.com/en-us/research/articles/webwright-a-terminal-is-all-you-need-for-web-agents/)
-- 🌐 **Project Page:** [microsoft.github.io/CUAwright](https://microsoft.github.io/CUAwright/)
+- 🌐 **Project Page:** [microsoft.github.io/CUAWright](https://microsoft.github.io/CUAWright/)
 
 CUAWright gives coding models a terminal to automate browsers and desktop applications.
 Use Webwright to browse the web and build reusable Playwright scripts, or run your
